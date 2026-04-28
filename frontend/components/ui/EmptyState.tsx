@@ -1,31 +1,32 @@
-import { LucideIcon } from "lucide-react";
-import { BookOpen } from "lucide-react";
+import { ReactNode } from "react";
+import { LucideIcon, Inbox } from "lucide-react";
+import Button from "./Button";
 
 interface EmptyStateProps {
   icon?: LucideIcon;
   title: string;
   description?: string;
-  action?: React.ReactNode;
+  actionLabel?: string;
+  onAction?: () => void;
+  action?: ReactNode;
 }
 
 export default function EmptyState({
-  icon: Icon = BookOpen,
+  icon: Icon = Inbox,
   title,
   description,
+  actionLabel,
+  onAction,
   action,
 }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center py-20 px-6 text-center glass-card rounded-[2.5rem]">
-      <div className="w-20 h-20 rounded-3xl bg-violet-500/5 border border-violet-500/10 flex items-center justify-center mb-6 shadow-2xl">
-        <Icon size={32} className="text-violet-400/60" />
+    <div className="surface-card flex min-h-[18rem] flex-col items-center justify-center rounded-2xl p-8 text-center">
+      <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-700/70 bg-slate-900/70 text-slate-400">
+        <Icon size={28} />
       </div>
-      <h3 className="text-xl font-bold text-white mb-2 tracking-tight">{title}</h3>
-      {description && (
-        <p className="text-zinc-500 max-w-sm mb-8 leading-relaxed font-medium">
-          {description}
-        </p>
-      )}
-      {action && <div className="mt-2">{action}</div>}
+      <h3 className="mb-2 text-lg font-semibold text-white">{title}</h3>
+      {description && <p className="mb-6 max-w-md text-sm leading-6 text-slate-400">{description}</p>}
+      {action || (actionLabel && onAction ? <Button onClick={onAction}>{actionLabel}</Button> : null)}
     </div>
   );
 }

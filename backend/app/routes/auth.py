@@ -27,6 +27,8 @@ from app.schemas.auth import (
     LoginSchema,
     MessageResponse,
     RegisterSchema,
+    ResetPasswordSchema,
+    SendForgotPasswordOTPSchema,
     SendLoginOTPSchema,
     SendSignupOTPSchema,
     TokenResponse,
@@ -128,7 +130,7 @@ def verify_latest_otp(email: str, purpose: str, otp: str, db: Session) -> None:
 
 @router.post("/register", response_model=TokenResponse)
 def register(data: RegisterSchema, db: Session = Depends(get_db)):
-    """Old password register kept for compatibility."""
+    """Password register kept for compatibility. Frontend uses OTP-verified signup."""
     normalized_email = data.email.lower().strip()
     existing = db.query(User).filter(User.email == normalized_email).first()
 
@@ -153,7 +155,7 @@ def register(data: RegisterSchema, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=TokenResponse)
 def login(data: LoginSchema, db: Session = Depends(get_db)):
-    """Old password login kept for compatibility."""
+    """Main password login."""
     normalized_email = data.email.lower().strip()
     user = db.query(User).filter(User.email == normalized_email).first()
 
@@ -191,7 +193,7 @@ def verify_signup_otp(data: VerifySignupOTPSchema, db: Session = Depends(get_db)
         name=data.name.strip(),
         email=normalized_email,
         hashed_password=hash_password(data.password),
-        role="student",
+        role=data.role,
         auth_provider="local",
         email_verified=True,
     )
@@ -235,6 +237,41 @@ def verify_login_otp(data: VerifyLoginOTPSchema, db: Session = Depends(get_db)):
         db.refresh(user)
 
     return build_token_response(user)
+
+
+@router.post("/forgot-password/send-otp", response_model=MessageResponse)
+def send_forgot_password_otp(data: SendForgotPasswordOTPSchema, db: Session = Depends(get_db)):
+    normalized_email = data.email.lower().strip()
+    user = db.query(User).filter(User.email == normalized_email).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="Account is deactivated")
+
+    return create_and_send_otp(normalized_email, "password_reset", db)
+
+
+@router.post("/forgot-password/reset", response_model=MessageResponse)
+def reset_password(data: ResetPasswordSchema, db: Session = Depends(get_db)):
+    normalized_email = data.email.lower().strip()
+    user = db.query(User).filter(User.email == normalized_email).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="Account is deactivated")
+
+    verify_latest_otp(normalized_email, "password_reset", data.otp, db)
+
+    user.hashed_password = hash_password(data.new_password)
+    user.auth_provider = "local" if not user.google_sub else user.auth_provider
+    user.email_verified = True
+    db.commit()
+
+    return MessageResponse(message="Password reset successfully")
 
 
 @router.post("/google", response_model=TokenResponse)

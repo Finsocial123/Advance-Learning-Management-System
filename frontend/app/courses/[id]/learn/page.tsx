@@ -40,7 +40,7 @@ export default function LearnPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const { isAuthenticated } = useAuthStore();
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   const courseId = Number(params.id);
   const initialLessonId = searchParams.get("lesson");
@@ -203,7 +203,7 @@ export default function LearnPage() {
       {/* Sidebar */}
       <aside className="hidden lg:flex flex-col w-72 shrink-0 gap-3">
         {progress && (
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+          <div className="surface-card rounded-2xl p-4">
             <p className="text-xs text-zinc-500 mb-2 uppercase tracking-wider">
               Course Progress
             </p>
@@ -221,8 +221,8 @@ export default function LearnPage() {
         )}
 
         {/* Lessons */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
-          <p className="text-xs text-zinc-500 px-4 py-3 border-b border-zinc-800 uppercase tracking-wider">
+        <div className="surface-card rounded-2xl overflow-hidden">
+          <p className="text-xs text-zinc-500 px-4 py-3 border-b border-white/10 uppercase tracking-wider">
             Lessons
           </p>
 
@@ -234,7 +234,7 @@ export default function LearnPage() {
                   setCurrentLesson(lesson);
                   setView("lesson");
                 }}
-                className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/50 last:border-0 cursor-pointer ${
+                className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/5 transition-colors border-b border-white/10/50 last:border-0 cursor-pointer ${
                   currentLesson?.id === lesson.id &&
                   view === "lesson"
                     ? "bg-violet-500/10"
@@ -263,8 +263,8 @@ export default function LearnPage() {
 
         {/* Assignments */}
         {assignments.length > 0 && (
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
-            <p className="text-xs text-zinc-500 px-4 py-3 border-b border-zinc-800 uppercase tracking-wider">
+          <div className="surface-card rounded-2xl overflow-hidden">
+            <p className="text-xs text-zinc-500 px-4 py-3 border-b border-white/10 uppercase tracking-wider">
               Assignments
             </p>
 
@@ -276,7 +276,7 @@ export default function LearnPage() {
                   setView("assignment");
                   loadMySubmission(a.id);
                 }}
-                className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/50 last:border-0 cursor-pointer ${
+                className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/5 transition-colors border-b border-white/10/50 last:border-0 cursor-pointer ${
                   activeAssignment?.id === a.id &&
                   view === "assignment"
                     ? "bg-orange-500/10"
@@ -301,7 +301,7 @@ export default function LearnPage() {
       <div className="flex-1 min-w-0 space-y-5">
         {view === "lesson" && currentLesson && (
           <>
-            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
+            <div className="surface-card rounded-[2rem] p-6">
               <div className="flex items-start justify-between gap-4 mb-4">
                 <div>
                   <p className="text-xs text-zinc-600 font-mono mb-1">
@@ -350,7 +350,7 @@ export default function LearnPage() {
                   <video
                     src={currentLesson.video_url}
                     controls
-                    className="w-full rounded-xl max-h-115 bg-black"
+                    className="w-full rounded-xl max-h-[28.75rem] bg-black"
                   />
                 </div>
               )}
@@ -439,7 +439,7 @@ export default function LearnPage() {
 
         {view === "assignment" &&
           activeAssignment && (
-            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 space-y-5">
+            <div className="surface-card rounded-[2rem] p-6 space-y-5">
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <ClipboardList
@@ -520,7 +520,7 @@ export default function LearnPage() {
                       className={`w-full h-28 border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 transition-colors ${
                         submitFile
                           ? "border-violet-500/50 bg-violet-500/5"
-                          : "border-zinc-700 hover:border-violet-500/30 bg-zinc-800/30"
+                          : "border-white/10 hover:border-violet-500/30 bg-white/5"
                       }`}
                     >
                       <Upload

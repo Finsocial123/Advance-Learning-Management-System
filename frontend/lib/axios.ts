@@ -1,13 +1,12 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "http://localhost:8000",
+  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000",
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-// attach token to every request automatically
 api.interceptors.request.use(
   (config) => {
     if (typeof window !== "undefined") {
@@ -21,14 +20,14 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// global response error handling
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
+    if (error.response?.status === 401 && typeof window !== "undefined") {
+      localStorage.removeItem("token");
+      localStorage.removeItem("auth-storage");
+      const currentPath = window.location.pathname;
+      if (!currentPath.startsWith("/login") && !currentPath.startsWith("/register")) {
         window.location.href = "/login";
       }
     }

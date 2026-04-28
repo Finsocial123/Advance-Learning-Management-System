@@ -16,6 +16,9 @@ def send_otp_email(to_email: str, otp: str, purpose: str) -> None:
     if purpose == "signup":
         subject = "Verify your LMS account"
         heading = "Complete your signup"
+    elif purpose == "password_reset":
+        subject = "Reset your LMS password"
+        heading = "Password reset verification"
     else:
         subject = "Your LMS login OTP"
         heading = "Login verification"

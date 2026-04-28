@@ -1,9 +1,9 @@
+import { ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 import Spinner from "./Spinner";
-import { ButtonHTMLAttributes } from "react";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "secondary" | "danger" | "ghost" | "outline";
+  variant?: "primary" | "secondary" | "danger" | "ghost" | "outline" | "google";
   size?: "sm" | "md" | "lg";
   loading?: boolean;
   fullWidth?: boolean;
@@ -20,24 +20,27 @@ export default function Button({
   ...props
 }: ButtonProps) {
   const base =
-    "inline-flex items-center justify-center gap-2 font-semibold transition-all duration-300 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer overflow-hidden relative";
+    "relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-xl font-semibold transition-all duration-200 active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-55 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07080d]";
 
   const variants = {
     primary:
-      "bg-violet-600 hover:bg-violet-500 text-white shadow-[0_0_20px_rgba(124,58,237,0.15)] rounded-full",
+      "bg-linear-to-r from-indigo-500 via-violet-500 to-sky-500 text-white shadow-[0_14px_34px_-20px_rgba(99,102,241,0.95)] hover:brightness-110",
     secondary:
-      "bg-white/5 hover:bg-white/10 text-zinc-100 border border-white/10 rounded-full backdrop-blur-sm",
+      "border border-slate-700/70 bg-slate-900/70 text-slate-100 hover:border-indigo-400/45 hover:bg-slate-800/80",
     danger:
-      "bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded-full",
-    ghost: "hover:bg-white/5 text-zinc-400 hover:text-white rounded-lg",
+      "border border-rose-400/25 bg-rose-500/12 text-rose-200 hover:border-rose-300/45 hover:bg-rose-500/18",
+    ghost:
+      "text-slate-400 hover:bg-slate-800/70 hover:text-white",
     outline:
-      "border border-white/10 bg-transparent hover:border-white/20 text-zinc-300 hover:text-white rounded-full",
+      "border border-slate-700/80 bg-slate-950/30 text-slate-200 hover:border-indigo-400/45 hover:bg-indigo-500/10 hover:text-white",
+    google:
+      "border border-slate-700/80 bg-white text-slate-950 shadow-[0_14px_34px_-24px_rgba(255,255,255,0.7)] hover:bg-slate-100",
   };
 
   const sizes = {
-    sm: "text-[11px] px-4 py-1.5 uppercase tracking-wider",
-    md: "text-sm px-6 py-2.5",
-    lg: "text-base px-8 py-3.5",
+    sm: "px-3.5 py-2 text-xs",
+    md: "px-4 py-2.5 text-sm",
+    lg: "px-5 py-3 text-sm sm:text-base",
   };
 
   return (
@@ -53,11 +56,11 @@ export default function Button({
       {...props}
     >
       {loading ? (
-        <div className="absolute inset-0 flex items-center justify-center bg-inherit">
+        <span className="absolute inset-0 flex items-center justify-center bg-inherit">
           <Spinner size="sm" />
-        </div>
+        </span>
       ) : null}
-      <span className={cn("flex items-center gap-2", loading && "opacity-0")}>
+      <span className={cn("inline-flex items-center justify-center gap-2", loading && "opacity-0")}>
         {children}
       </span>
     </button>

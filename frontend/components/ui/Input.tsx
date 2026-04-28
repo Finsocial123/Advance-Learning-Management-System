@@ -1,5 +1,5 @@
+import { InputHTMLAttributes, forwardRef } from "react";
 import { cn } from "@/lib/utils";
-import { InputHTMLAttributes, forwardRef, useRef } from "react";
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -10,47 +10,31 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ label, error, hint, className, id, ...props }, ref) => {
     const inputId = id || label?.toLowerCase().replace(/\s+/g, "-");
-    const inputRef = useRef<HTMLInputElement>(null);
-
-    // Forward click to the actual input
-    const handleWrapperClick = () => {
-      inputRef.current?.showPicker?.();
-    };
 
     return (
-      <div className="flex flex-col gap-2" onClick={handleWrapperClick}>
+      <div className="flex flex-col gap-2">
         {label && (
-          <label htmlFor={inputId} className="text-xs font-bold uppercase tracking-widest text-zinc-500 px-1">
+          <label htmlFor={inputId} className="px-0.5 text-[12px] font-semibold text-slate-300">
             {label}
           </label>
         )}
         <input
-          ref={(node) => {
-            inputRef.current = node;
-            if (typeof ref === 'function') ref(node);
-            else if (ref) ref.current = node;
-          }}
+          ref={ref}
           id={inputId}
           className={cn(
-            "w-full bg-[#0c0c0e] border border-white/5 rounded-xl px-4 py-3",
-            "text-zinc-100 placeholder-zinc-600 text-sm",
-            "focus:outline-none focus:border-violet-500/50 focus:ring-4 focus:ring-violet-500/5",
-            "transition-all duration-300",
-            "disabled:opacity-50 disabled:cursor-not-allowed",
-            error && "border-rose-500/50 focus:border-rose-500/50 focus:ring-rose-500/5",
+            "h-11 w-full rounded-xl border border-slate-700/75 bg-slate-950/40 px-3.5 text-sm text-slate-100 outline-none transition-all placeholder:text-slate-600",
+            "focus:border-indigo-400/70 focus:bg-slate-950/70 focus:ring-4 focus:ring-indigo-500/10",
+            "disabled:cursor-not-allowed disabled:opacity-50",
+            error && "border-rose-400/60 focus:border-rose-400/80 focus:ring-rose-500/10",
             className
           )}
           {...props}
         />
-        {hint && !error && (
-          <p className="text-[11px] text-zinc-500 px-1 font-medium">{hint}</p>
-        )}
-        {error && (
-          <p className="text-[11px] text-rose-400 px-1 font-bold italic">{error}</p>
-        )}
+        {hint && !error && <p className="px-0.5 text-xs text-slate-500">{hint}</p>}
+        {error && <p className="px-0.5 text-xs font-medium text-rose-300">{error}</p>}
       </div>
     );
   }
-);   
+);
 Input.displayName = "Input";
 export default Input;

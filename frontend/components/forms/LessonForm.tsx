@@ -83,7 +83,7 @@ export default function LessonForm({
         rows={4}
       />
 
-      <div className="p-6 rounded-4xl bg-white/5 border border-white/5 space-y-6">
+      <div className="p-6 rounded-[2rem] bg-white/5 border border-white/5 space-y-6">
         <Input
           label="External Video URL"
           placeholder="https://youtube.com/..."

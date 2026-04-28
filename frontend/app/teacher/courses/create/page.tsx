@@ -48,7 +48,7 @@ export default function CreateCoursePage() {
         </div>
       </div>
 
-      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8">
+      <div className="surface-card rounded-[2rem] p-8">
         <CourseForm
           onSubmit={handleCreate}
           submitLabel="Create Course"

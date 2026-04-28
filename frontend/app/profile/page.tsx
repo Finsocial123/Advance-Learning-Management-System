@@ -16,7 +16,9 @@ import Image from "next/image";
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { user, setUser, isAuthenticated } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
+  const setUser = useAuthStore((state) => state.setUser);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   const [name, setName] = useState("");
   const [bio, setBio] = useState("");
@@ -74,7 +76,7 @@ export default function ProfilePage() {
         </p>
       </div>
 
-      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8">
+      <div className="surface-card rounded-[2rem] p-8">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* avatar */}
           <div className="flex items-center gap-6">
@@ -128,7 +130,7 @@ export default function ProfilePage() {
 
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-zinc-300">Email</label>
-            <div className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-3 py-2.5 text-sm text-zinc-500 cursor-not-allowed">
+            <div className="w-full bg-white/5 border border-white/10/50 rounded-lg px-3 py-2.5 text-sm text-zinc-500 cursor-not-allowed">
               {user.email}
             </div>
             <p className="text-xs text-zinc-600">Email cannot be changed</p>

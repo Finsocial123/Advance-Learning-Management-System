@@ -119,7 +119,7 @@ export default function SubmissionsPage() {
           {submissions.map((sub) => (
             <div
               key={sub.id}
-              className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 flex items-start justify-between gap-4"
+              className="surface-card rounded-2xl p-5 flex items-start justify-between gap-4"
             >
               <div className="space-y-1.5">
                 <p className="font-medium text-zinc-100">

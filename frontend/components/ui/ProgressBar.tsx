@@ -2,55 +2,47 @@ import { cn } from "@/lib/utils";
 
 interface ProgressBarProps {
   value: number;
+  max?: number;
+  label?: string;
+  showPercentage?: boolean;
   showLabel?: boolean;
-  size?: "sm" | "md";
+  size?: "sm" | "md" | "lg";
   className?: string;
 }
 
 export default function ProgressBar({
   value,
-  showLabel = true,
+  max = 100,
+  label,
+  showPercentage = true,
+  showLabel,
   size = "md",
   className,
 }: ProgressBarProps) {
-  const clamped = Math.min(100, Math.max(0, value));
-
-  const color =
-    clamped === 100
-      ? "bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.4)]"
-      : clamped >= 50
-      ? "bg-violet-500 shadow-[0_0_12px_rgba(139,92,246,0.4)]"
-      : "bg-indigo-600";
-
+  const percentage = Math.min(Math.max((value / max) * 100, 0), 100);
+  const shouldShowText = showLabel === false ? false : showPercentage;
   const heights = {
-    sm: "h-1",
+    sm: "h-1.5",
     md: "h-2",
+    lg: "h-3",
   };
 
   return (
     <div className={cn("w-full", className)}>
-      <div
-        className={cn(
-          "w-full bg-white/5 rounded-full overflow-hidden border border-white/5",
-          heights[size]
-        )}
-      >
-        <div
-          className={cn(
-            "h-full rounded-full transition-all duration-1000 ease-out",
-            color
+      {(label || shouldShowText) && (
+        <div className="mb-2 flex items-center justify-between gap-3 text-xs">
+          {label && <span className="font-medium text-slate-400">{label}</span>}
+          {shouldShowText && (
+            <span className="font-semibold text-indigo-200">{Math.round(percentage)}%</span>
           )}
-          style={{ width: `${clamped}%` }}
-        />
-      </div>
-      {showLabel && (
-        <div className="flex justify-between items-center mt-2 px-1">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Progress</span>
-          <p className="text-[11px] font-bold text-violet-400">
-            {clamped}%
-          </p>
         </div>
       )}
+      <div className={cn("overflow-hidden rounded-full bg-slate-800/80 ring-1 ring-slate-700/50", heights[size])}>
+        <div
+          className="h-full rounded-full bg-linear-to-r from-indigo-500 via-violet-500 to-sky-400 transition-all duration-500"
+          style={{ width: `${percentage}%` }}
+        />
+      </div>
     </div>
   );
 }
