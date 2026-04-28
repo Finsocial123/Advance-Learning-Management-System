@@ -1,34 +1,27 @@
 "use client";
 
-import { useEffect } from "react";
+import { ReactNode, useEffect } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
-  title?: string;
-  children: React.ReactNode;
-  size?: "sm" | "md" | "lg";
+  title: string;
+  children: ReactNode;
+  size?: "sm" | "md" | "lg" | "xl";
 }
 
-export default function Modal({
-  isOpen,
-  onClose,
-  title,
-  children,
-  size = "md",
-}: ModalProps) {
+export default function Modal({ isOpen, onClose, title, children, size = "md" }: ModalProps) {
   useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+    if (!isOpen) return;
+    const handleEsc = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
     };
-    if (isOpen) {
-      document.addEventListener("keydown", handleKey);
-      document.body.style.overflow = "hidden";
-    }
+    document.addEventListener("keydown", handleEsc);
+    document.body.style.overflow = "hidden";
     return () => {
-      document.removeEventListener("keydown", handleKey);
+      document.removeEventListener("keydown", handleEsc);
       document.body.style.overflow = "unset";
     };
   }, [isOpen, onClose]);
@@ -37,34 +30,34 @@ export default function Modal({
 
   const sizes = {
     sm: "max-w-md",
-    md: "max-w-xl",
-    lg: "max-w-3xl",
+    md: "max-w-lg",
+    lg: "max-w-2xl",
+    xl: "max-w-4xl",
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
-      <div
-        className="absolute inset-0 bg-black/80 backdrop-blur-md"
+    <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
+      <button
+        aria-label="Close modal backdrop"
+        className="absolute inset-0 bg-black/72 backdrop-blur-sm"
         onClick={onClose}
       />
       <div
         className={cn(
-          "relative w-full bg-[#0c0c0e] border border-white/10 rounded-[2rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.6)] overflow-hidden animate-in zoom-in-95 duration-300",
+          "surface-card relative max-h-[90vh] w-full overflow-hidden rounded-2xl",
           sizes[size]
         )}
       >
-        {title && (
-          <div className="flex items-center justify-between px-8 py-6 border-b border-white/5">
-            <h2 className="text-xl font-bold text-white tracking-tight">{title}</h2>
-            <button
-              onClick={onClose}
-              className="p-2 rounded-full hover:bg-white/5 text-zinc-500 hover:text-white transition-all cursor-pointer"
-            >
-              <X size={20} />
-            </button>
-          </div>
-        )}
-        <div className="p-8">{children}</div>
+        <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4">
+          <h2 className="text-lg font-semibold text-white">{title}</h2>
+          <button
+            onClick={onClose}
+            className="rounded-xl p-2 text-slate-500 transition-colors hover:bg-slate-800 hover:text-white"
+          >
+            <X size={20} />
+          </button>
+        </div>
+        <div className="max-h-[calc(90vh-4.5rem)] overflow-y-auto p-5 sm:p-6">{children}</div>
       </div>
     </div>
   );

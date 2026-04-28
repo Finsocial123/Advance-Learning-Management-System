@@ -1,33 +1,33 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { Role } from "@/types";
 
 export function useRoleGuard(allowedRoles: Role[]) {
   const router = useRouter();
-  const { user, isAuthenticated, _hasHydrated } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const hasHydrated = useAuthStore((state) => state._hasHydrated);
   const [checked, setChecked] = useState(false);
+  const allowedKey = useMemo(() => allowedRoles.join("|"), [allowedRoles]);
 
   useEffect(() => {
-    // wait until zustand has finished rehydrating from localStorage
-    if (!_hasHydrated) return;
+    if (!hasHydrated) return;
 
     if (!isAuthenticated || !user) {
       router.replace("/login");
       return;
     }
 
-    if (!allowedRoles.includes(user.role)) {
+    if (!allowedKey.split("|").includes(user.role)) {
       router.replace("/dashboard");
       return;
     }
-    const check = () =>{
-      setChecked(true);
-    }
-    check();
-  }, [_hasHydrated, isAuthenticated, user, router, allowedRoles]);
+
+    setChecked(true);
+  }, [hasHydrated, isAuthenticated, user, router, allowedKey]);
 
   return { user, isAuthenticated, checked };
 }

@@ -48,7 +48,7 @@ export default function StudentDashboard() {
         ) : (
           <div className="grid grid-cols-1 gap-4">
             {data.courses.map((course) => (
-              <div key={course.course_id} className="glass-card group p-6 rounded-4xl hover:border-violet-500/20 transition-all duration-300">
+              <div key={course.course_id} className="glass-card group p-6 rounded-[2rem] hover:border-violet-500/20 transition-all duration-300">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                   <div className="flex-1">
                     <h3 className="text-lg font-bold text-white mb-1 group-hover:text-violet-400 transition-colors">{course.course_title}</h3>

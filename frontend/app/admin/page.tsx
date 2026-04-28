@@ -2,19 +2,18 @@
 
 import { useRoleGuard } from "@/hooks/useRoleGuard";
 import AdminDashboard from "@/components/dashboard/AdminDashboard";
+import { FullPageSpinner } from "@/components/ui/Spinner";
 
 export default function AdminPage() {
-  useRoleGuard(["admin"]);
+  const { checked } = useRoleGuard(["admin"]);
+
+  if (!checked) return <FullPageSpinner />;
 
   return (
-    <div className="space-y-6">
+    <div className="page-shell">
       <div>
-        <h1 className="text-2xl font-bold text-zinc-100">
-          Admin Dashboard
-        </h1>
-        <p className="text-sm text-zinc-500 mt-1">
-          Platform overview and management
-        </p>
+        <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">Admin Dashboard</h1>
+        <p className="mt-2 text-sm text-slate-400">Platform overview and management.</p>
       </div>
       <AdminDashboard />
     </div>

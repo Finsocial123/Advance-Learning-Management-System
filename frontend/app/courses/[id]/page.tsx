@@ -27,7 +27,8 @@ import Image from "next/image";
 export default function CourseDetailPage() {
   const { id } = useParams();
   const router = useRouter();
-  const { user, isAuthenticated } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   const [course, setCourse] = useState<Course | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -105,7 +106,7 @@ export default function CourseDetailPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       {/* header */}
-      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
+      <div className="surface-card rounded-[2rem] overflow-hidden">
         {course.thumbnail_url && (
           <div className="h-56 overflow-hidden">
             <Image
@@ -279,7 +280,7 @@ export default function CourseDetailPage() {
             {assignments.map((a) => (
               <div
                 key={a.id}
-                className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex items-start justify-between gap-4"
+                className="surface-card rounded-2xl p-4 flex items-start justify-between gap-4"
               >
                 <div>
                   <h4 className="font-medium text-zinc-100">{a.title}</h4>

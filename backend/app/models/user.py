@@ -9,7 +9,7 @@ class User(Base):
     name = Column(String(100), nullable=False)
     email = Column(String(255), unique=True, index=True, nullable=False)
 
-    # Nullable because Google users may not have a local password.
+    # Nullable because Google-only users may not have a local password.
     hashed_password = Column(String(255), nullable=True)
 
     # local | google

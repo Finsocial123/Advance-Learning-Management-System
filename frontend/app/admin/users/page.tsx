@@ -25,7 +25,7 @@ import Image from "next/image";
 
 export default function AdminUsersPage() {
   useRoleGuard(["admin"]);
-  const { user: currentUser } = useAuthStore();
+  const currentUser = useAuthStore((state) => state.user);
 
   const [users, setUsers] = useState<User[]>([]);
   const [filtered, setFiltered] = useState<User[]>([]);
@@ -142,16 +142,16 @@ export default function AdminUsersPage() {
             placeholder="Search users..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="bg-zinc-900 border border-zinc-700 rounded-lg pl-9 pr-4 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-violet-500 transition-colors w-56"
+            className="rounded-2xl border border-white/10 bg-black/30 rounded-lg pl-9 pr-4 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-violet-500 transition-colors w-56"
           />
         </div>
       </div>
 
-      <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+      <div className="surface-card rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-zinc-800">
+              <tr className="border-b border-white/10">
                 <th className="text-left text-xs font-medium text-zinc-500 uppercase tracking-wider px-5 py-3">
                   User
                 </th>
@@ -170,7 +170,7 @@ export default function AdminUsersPage() {
               {filtered.map((u) => (
                 <tr
                   key={u.id}
-                  className="hover:bg-zinc-800/30 transition-colors"
+                  className="hover:bg-white/5 transition-colors"
                 >
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">

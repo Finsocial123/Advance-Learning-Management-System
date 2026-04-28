@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { User, Role } from "@/types";
+import { Role, User } from "@/types";
 
 interface AuthState {
   user: User | null;
@@ -26,17 +26,19 @@ export const useAuthStore = create<AuthState>()(
       setHasHydrated: (val) => set({ _hasHydrated: val }),
 
       setAuth: (user, token) => {
-        localStorage.setItem("token", token);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("token", token);
+        }
         set({ user, token, isAuthenticated: true });
       },
 
-      setUser: (user) => {
-        set({ user });
-      },
+      setUser: (user) => set({ user }),
 
       logout: () => {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("token");
+          localStorage.removeItem("auth-storage");
+        }
         set({ user: null, token: null, isAuthenticated: false });
       },
 
@@ -54,7 +56,7 @@ export const useAuthStore = create<AuthState>()(
         isAuthenticated: state.isAuthenticated,
       }),
       onRehydrateStorage: () => (state) => {
-        if (state) state.setHasHydrated(true);
+        state?.setHasHydrated(true);
       },
     }
   )

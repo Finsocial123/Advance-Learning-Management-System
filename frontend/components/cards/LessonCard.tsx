@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  PlayCircle,
-  FileText,
-  ExternalLink,
-  CheckCircle2,
-  Circle,
-} from "lucide-react";
+import { CheckCircle2, Circle, ExternalLink, FileText, PlayCircle } from "lucide-react";
 import { Lesson } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -17,79 +11,61 @@ interface LessonCardProps {
   actionSlot?: React.ReactNode;
 }
 
-export default function LessonCard({
-  lesson,
-  completed = false,
-  onClick,
-  actionSlot,
-}: LessonCardProps) {
+export default function LessonCard({ lesson, completed = false, onClick, actionSlot }: LessonCardProps) {
   const hasVideo = lesson.video_url || lesson.external_video_link;
 
   return (
     <div
       className={cn(
-        "group flex items-start gap-5 p-5 rounded-2xl border transition-all duration-300",
-        "bg-[#0c0c0e] border-white/5 hover:border-violet-500/20 hover:bg-white/20",
+        "surface-card card-hover group flex items-start gap-4 rounded-2xl p-4 sm:p-5",
         onClick && "cursor-pointer active:scale-[0.99]"
       )}
       onClick={onClick}
     >
-      {/* completion icon */}
       <div className="mt-1 shrink-0">
         {completed ? (
-          <div className="p-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-            <CheckCircle2 size={18} className="text-emerald-500" />
+          <div className="rounded-full border border-emerald-400/25 bg-emerald-400/10 p-1">
+            <CheckCircle2 size={18} className="text-emerald-300" />
           </div>
         ) : (
-          <div className="p-1 rounded-full bg-white/5 border border-white/10 group-hover:border-violet-500/30 transition-colors">
-            <Circle size={18} className="text-zinc-600 group-hover:text-violet-400" />
+          <div className="rounded-full border border-slate-700 bg-slate-900/70 p-1 transition-colors group-hover:border-indigo-400/40">
+            <Circle size={18} className="text-slate-600 transition-colors group-hover:text-indigo-300" />
           </div>
         )}
       </div>
 
-      {/* content */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <span className="text-[10px] font-black tracking-[0.2em] text-zinc-600 uppercase">
-              Lesson {lesson.order + 1}
-            </span>
-            <h4 className="font-bold text-white mt-1 group-hover:text-violet-300 transition-colors leading-tight">
-              {lesson.title}
-            </h4>
-            {lesson.description && (
-              <p className="text-sm text-zinc-500 mt-2 line-clamp-2 leading-relaxed">
-                {lesson.description}
-              </p>
-            )}
-          </div>
-        </div>
+      <div className="min-w-0 flex-1">
+        <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
+          Lesson {lesson.order + 1}
+        </span>
+        <h4 className="mt-1 font-semibold leading-tight text-white transition-colors group-hover:text-indigo-200">
+          {lesson.title}
+        </h4>
+        {lesson.description && (
+          <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-400">{lesson.description}</p>
+        )}
 
-        {/* media indicators */}
-        <div className="flex items-center gap-4 mt-4">
+        <div className="mt-4 flex flex-wrap items-center gap-2">
           {hasVideo && (
-            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-violet-400">
-              <PlayCircle size={14} />
-              Video
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-400/20 bg-indigo-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-indigo-200">
+              <PlayCircle size={13} /> Video
             </span>
           )}
           {lesson.pdf_url && (
-            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-blue-400">
-              <FileText size={14} />
-              PDF Resource
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-400/20 bg-sky-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-sky-200">
+              <FileText size={13} /> PDF
             </span>
           )}
           {lesson.external_video_link && !lesson.video_url && (
-            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-amber-500">
-              <ExternalLink size={14} />
-              External
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/20 bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-amber-200">
+              <ExternalLink size={13} /> External
             </span>
           )}
         </div>
       </div>
 
       {actionSlot && (
-        <div className="shrink-0 self-center" onClick={(e) => e.stopPropagation()}>
+        <div className="shrink-0 self-center" onClick={(event) => event.stopPropagation()}>
           {actionSlot}
         </div>
       )}

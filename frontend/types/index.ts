@@ -153,4 +153,6 @@ export interface TokenResponse {
   role: Role;
   user_id: number;
   name: string;
+  email: string;
+  avatar_url: string | null;
 }

@@ -1,6 +1,6 @@
 import { getToken } from "./auth";
 
-export const API_URL = "http://127.0.0.1:8000";
+export const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
 
 export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
   const token = getToken();
@@ -16,3 +16,12 @@ export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
     headers,
   });
 };
+
+export function getApiErrorMessage(error: unknown): string {
+  if (error && typeof error === "object" && "response" in error) {
+    const axiosError = error as { response?: { data?: { detail?: string; message?: string } } };
+    return axiosError.response?.data?.detail || axiosError.response?.data?.message || "Something went wrong";
+  }
+  if (error instanceof Error) return error.message;
+  return "Something went wrong";
+}

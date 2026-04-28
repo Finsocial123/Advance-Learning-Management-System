@@ -34,13 +34,13 @@ export function getInitials(name: string): string {
 export function getRoleBadgeColor(role: string): string {
   switch (role) {
     case "admin":
-      return "bg-red-500/20 text-red-400 border border-red-500/30";
+      return "border border-rose-400/25 bg-rose-500/10 text-rose-300";
     case "teacher":
-      return "bg-blue-500/20 text-blue-400 border border-blue-500/30";
+      return "border border-sky-400/25 bg-sky-500/10 text-sky-300";
     case "student":
-      return "bg-green-500/20 text-green-400 border border-green-500/30";
+      return "border border-emerald-400/25 bg-emerald-500/10 text-emerald-300";
     default:
-      return "bg-zinc-500/20 text-zinc-400 border border-zinc-500/30";
+      return "border border-zinc-400/20 bg-zinc-500/10 text-zinc-300";
   }
 }
 

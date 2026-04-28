@@ -41,7 +41,7 @@ export default function TeacherDashboard() {
 
         <div className="space-y-4">
           {data.courses.map((course) => (
-            <div key={course.course_id} className="glass-card rounded-4xl overflow-hidden group border-white/5 hover:border-violet-500/20 transition-all duration-300">
+            <div key={course.course_id} className="glass-card rounded-[2rem] overflow-hidden group border-white/5 hover:border-violet-500/20 transition-all duration-300">
               <div 
                 className="w-full flex flex-col md:flex-row md:items-center justify-between px-8 py-6 cursor-pointer"
                 onClick={() => setExpandedCourse(expandedCourse === course.course_id ? null : course.course_id)}
@@ -64,7 +64,7 @@ export default function TeacherDashboard() {
               </div>
 
               {expandedCourse === course.course_id && (
-                <div className="px-8 pb-8 pt-4 border-t border-white/5 bg-white/1 animate-in slide-in-from-top-2 duration-300">
+                <div className="px-8 pb-8 pt-4 border-t border-white/5 bg-white/[0.01] animate-in slide-in-from-top-2 duration-300">
                   <div className="flex items-center justify-between mb-6">
                     <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Engagement Analytics</p>
                     <Button variant="ghost" size="sm" className="h-7 text-[10px]" onClick={() => router.push(`/teacher/courses/${course.course_id}/edit`)}>

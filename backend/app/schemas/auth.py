@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, EmailStr, Field
 
 
@@ -20,6 +22,7 @@ class VerifySignupOTPSchema(BaseModel):
     name: str = Field(min_length=2, max_length=100)
     email: EmailStr
     password: str = Field(min_length=6, max_length=128)
+    role: Literal["student", "teacher"] = "student"
     otp: str = Field(min_length=6, max_length=6)
 
 
@@ -30,6 +33,16 @@ class SendLoginOTPSchema(BaseModel):
 class VerifyLoginOTPSchema(BaseModel):
     email: EmailStr
     otp: str = Field(min_length=6, max_length=6)
+
+
+class SendForgotPasswordOTPSchema(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordSchema(BaseModel):
+    email: EmailStr
+    otp: str = Field(min_length=6, max_length=6)
+    new_password: str = Field(min_length=6, max_length=128)
 
 
 class GoogleAuthSchema(BaseModel):

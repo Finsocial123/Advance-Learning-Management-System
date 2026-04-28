@@ -1,10 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { BookOpen, User, Calendar, Play } from "lucide-react";
+import Image from "next/image";
+import { BookOpen, Calendar, Play, User } from "lucide-react";
 import { Course } from "@/types";
 import { formatDate } from "@/lib/utils";
-import Image from "next/image";
 
 interface CourseCardProps {
   course: Course;
@@ -12,18 +12,14 @@ interface CourseCardProps {
   actionSlot?: React.ReactNode;
 }
 
-export default function CourseCard({
-  course,
-  showTeacher = true,
-  actionSlot,
-}: CourseCardProps) {
+export default function CourseCard({ course, showTeacher = true, actionSlot }: CourseCardProps) {
   const router = useRouter();
 
   return (
-    <div className="group bg-[#0c0c0e] border border-white/5 rounded-4xl overflow-hidden hover:border-violet-500/30 transition-all duration-500 flex flex-col shadow-2xl hover:shadow-violet-500/10">
-      {/* thumbnail */}
-      <div
-        className="relative h-52 bg-zinc-900 overflow-hidden cursor-pointer"
+    <article className="surface-card card-hover group flex h-full flex-col overflow-hidden rounded-2xl">
+      <button
+        type="button"
+        className="relative h-48 w-full overflow-hidden bg-slate-950 text-left"
         onClick={() => router.push(`/courses/${course.id}`)}
       >
         {course.thumbnail_url ? (
@@ -31,59 +27,52 @@ export default function CourseCard({
             src={course.thumbnail_url}
             alt={course.title}
             fill
-            className="object-cover group-hover:scale-110 transition-transform duration-700"
+            className="object-cover transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-zinc-900 to-black">
-            <BookOpen size={48} className="text-zinc-800" />
+          <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-slate-900 via-slate-950 to-black">
+            <BookOpen size={46} className="text-slate-800" />
           </div>
         )}
-        <div className="absolute inset-0 bg-black/20 group-hover:bg-black/0 transition-colors duration-500" />
-        
-        {/* Play Icon Overlay */}
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-           <div className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white">
-              <Play size={20} fill="currentColor" />
-           </div>
-        </div>
-      </div>
+        <div className="absolute inset-0 bg-linear-to-t from-black/78 via-black/20 to-transparent" />
+        <span className="absolute left-4 top-4 rounded-full border border-white/10 bg-black/40 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-200 backdrop-blur-md">
+          Course
+        </span>
+        <span className="absolute bottom-4 right-4 flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-white/10 text-white opacity-0 shadow-xl backdrop-blur-md transition-opacity group-hover:opacity-100">
+          <Play size={18} fill="currentColor" />
+        </span>
+      </button>
 
-      {/* content */}
-      <div className="p-6 flex flex-col flex-1">
-        <h3
-          className="text-lg font-bold text-white mb-2 line-clamp-2 cursor-pointer hover:text-violet-400 transition-colors tracking-tight leading-snug"
+      <div className="flex flex-1 flex-col p-5">
+        <button
+          type="button"
+          className="mb-2 line-clamp-2 text-left text-lg font-semibold leading-snug tracking-tight text-white transition-colors hover:text-indigo-200"
           onClick={() => router.push(`/courses/${course.id}`)}
         >
           {course.title}
-        </h3>
+        </button>
 
         {course.description && (
-          <p className="text-sm text-zinc-500 line-clamp-2 mb-6 font-medium leading-relaxed">
-            {course.description}
-          </p>
+          <p className="mb-5 line-clamp-2 text-sm leading-6 text-slate-400">{course.description}</p>
         )}
 
-        <div className="mt-auto flex items-center justify-between">
-          <div className="space-y-1.5">
+        <div className="mt-auto flex items-center justify-between gap-3 border-t border-slate-800/90 pt-4">
+          <div className="min-w-0 space-y-1.5">
             {showTeacher && course.teacher_name && (
-              <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-zinc-400">
-                <div className="w-5 h-5 rounded-full bg-violet-500/10 flex items-center justify-center">
-                  <User size={10} className="text-violet-400" />
-                </div>
-                <span>{course.teacher_name}</span>
+              <div className="flex items-center gap-2 text-xs text-slate-400">
+                <User size={13} className="text-indigo-300" />
+                <span className="truncate">{course.teacher_name}</span>
               </div>
             )}
-            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-600">
-              <Calendar size={12} />
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <Calendar size={13} />
               <span>{formatDate(course.created_at)}</span>
             </div>
           </div>
         </div>
 
-        {actionSlot && (
-          <div className="mt-6 pt-5 border-t border-white/5">{actionSlot}</div>
-        )}
+        {actionSlot && <div className="mt-4 border-t border-slate-800/90 pt-4">{actionSlot}</div>}
       </div>
-    </div>
+    </article>
   );
 }

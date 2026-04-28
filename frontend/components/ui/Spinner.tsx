@@ -7,27 +7,21 @@ interface SpinnerProps {
 
 export default function Spinner({ size = "md", className }: SpinnerProps) {
   const sizes = {
-    sm: "w-4 h-4 border-2",
-    md: "w-8 h-8 border-[3px]",
-    lg: "w-12 h-12 border-4",
+    sm: "h-4 w-4 border-2",
+    md: "h-8 w-8 border-[3px]",
+    lg: "h-12 w-12 border-4",
   };
 
-  return (
-    <div
-      className={cn(
-        "rounded-full border-white/10 border-t-violet-500 animate-spin",
-        sizes[size],
-        className
-      )}
-    />
-  );
+  return <div className={cn("animate-spin rounded-full border-slate-700 border-t-indigo-300", sizes[size], className)} />;
 }
 
 export function FullPageSpinner() {
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col gap-4 items-center justify-center bg-[#050507]">
-      <Spinner size="lg" />
-      <p className="text-xs font-bold uppercase tracking-[0.2em] text-zinc-600 animate-pulse">
+    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-4 bg-[#07080d]/95 backdrop-blur-xl">
+      <div className="rounded-2xl border border-slate-700/70 bg-slate-900/70 p-5 shadow-[0_20px_80px_-40px_rgba(99,102,241,0.9)]">
+        <Spinner size="lg" />
+      </div>
+      <p className="animate-pulse text-xs font-bold uppercase tracking-[0.24em] text-slate-500">
         Loading LearnHub
       </p>
     </div>

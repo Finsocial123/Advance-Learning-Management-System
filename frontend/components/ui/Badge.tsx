@@ -6,23 +6,19 @@ interface BadgeProps {
   className?: string;
 }
 
-export default function Badge({
-  label,
-  variant = "default",
-  className,
-}: BadgeProps) {
+export default function Badge({ label, variant = "default", className }: BadgeProps) {
   const variants = {
     role: getRoleBadgeColor(label),
-    success: "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20",
-    warning: "bg-amber-500/10 text-amber-400 border border-amber-500/20",
-    danger: "bg-rose-500/10 text-rose-400 border border-rose-500/20",
-    default: "bg-white/5 text-zinc-400 border border-white/10",
+    success: "border border-emerald-400/25 bg-emerald-400/10 text-emerald-300",
+    warning: "border border-amber-400/25 bg-amber-400/10 text-amber-300",
+    danger: "border border-rose-400/25 bg-rose-400/10 text-rose-300",
+    default: "border border-slate-700/70 bg-slate-900/65 text-slate-300",
   };
 
   return (
     <span
       className={cn(
-        "inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider",
+        "inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em]",
         variants[variant],
         className
       )}
