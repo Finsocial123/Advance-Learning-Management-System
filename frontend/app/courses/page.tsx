@@ -46,14 +46,14 @@ export default function CoursesPage() {
           </div>
 
           <form onSubmit={handleSearch} className="relative w-full lg:max-w-md">
-            <Search size={17} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+            <Search size={17} className="pointer-events-none absolute left-3.5 top-1/12 translate-y-1/2 text-slate-500" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search courses..."
               className="h-12 w-full rounded-xl border border-slate-700/75 bg-slate-950/45 pl-10 pr-24 text-sm text-slate-100 outline-none transition-all placeholder:text-slate-600 focus:border-indigo-400/70 focus:ring-4 focus:ring-indigo-500/10"
             />
-            <Button type="submit" size="sm" className="absolute right-1.5 top-1.5">
+            <Button type="submit" size="sm" className="absolute  top-4">
               Search
             </Button>
           </form>

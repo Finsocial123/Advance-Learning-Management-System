@@ -63,7 +63,7 @@ export default function TeacherCoursesPage() {
   return (
     <div className="page-shell">
       <div className="section-header">
-        <div>
+        <div className="mb-4">
           <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">My courses</h1>
           <p className="mt-2 text-sm text-slate-400">Create, edit, and organize your course content.</p>
         </div>
