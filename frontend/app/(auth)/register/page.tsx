@@ -4,7 +4,19 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import toast from "react-hot-toast";
-import { ArrowRight, Eye, EyeOff, GraduationCap, KeyRound, LockKeyhole, Mail, PencilLine, RotateCcw, ShieldCheck, UserCircle } from "lucide-react";
+import {
+  ArrowRight,
+  Eye,
+  EyeOff,
+  GraduationCap,
+  KeyRound,
+  LockKeyhole,
+  Mail,
+  PencilLine,
+  RotateCcw,
+  ShieldCheck,
+  UserCircle,
+} from "lucide-react";
 import { authService } from "@/services/auth.service";
 import { userService } from "@/services/user.service";
 import { useAuthStore } from "@/store/authStore";
@@ -31,19 +43,28 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string; confirmPassword?: string; otp?: string }>({});
+  const [errors, setErrors] = useState<{
+    name?: string;
+    email?: string;
+    password?: string;
+    confirmPassword?: string;
+    otp?: string;
+  }>({});
 
   const normalizedEmail = email.trim().toLowerCase();
 
   const validateDetails = () => {
     const nextErrors: typeof errors = {};
     if (!name.trim()) nextErrors.name = "Name is required";
-    else if (name.trim().length < 2) nextErrors.name = "Name must be at least 2 characters";
+    else if (name.trim().length < 2)
+      nextErrors.name = "Name must be at least 2 characters";
     if (!normalizedEmail) nextErrors.email = "Email is required";
     if (!password) nextErrors.password = "Password is required";
-    else if (password.length < 6) nextErrors.password = "Password must be at least 6 characters";
+    else if (password.length < 6)
+      nextErrors.password = "Password must be at least 6 characters";
     if (!confirmPassword) nextErrors.confirmPassword = "Confirm your password";
-    else if (password !== confirmPassword) nextErrors.confirmPassword = "Passwords do not match";
+    else if (password !== confirmPassword)
+      nextErrors.confirmPassword = "Passwords do not match";
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   };
@@ -120,15 +141,24 @@ export default function RegisterPage() {
               <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-linear-to-br from-indigo-500 via-violet-500 to-sky-500 text-white shadow-[0_18px_44px_-24px_rgba(99,102,241,0.95)] lg:mx-0">
                 <GraduationCap size={24} />
               </div>
-              <h2 className="text-3xl font-bold tracking-tight text-white">Create account</h2>
-              <p className="mt-2 text-sm text-slate-400">Create your LMS account, verify email with OTP, or continue with Google.</p>
+              <h2 className="text-3xl font-bold tracking-tight text-white">
+                Create account
+              </h2>
+              <p className="mt-2 text-sm text-slate-400">
+                Create your LMS account, verify email with OTP, or continue with
+                Google.
+              </p>
             </div>
 
-            <GoogleLoginButton />
+            <div className="flex flex-col items-center gap-3">
+              <GoogleLoginButton />
+            </div>
 
             <div className="my-6 flex items-center gap-3">
               <div className="h-px flex-1 bg-slate-800" />
-              <span className="text-xs font-medium uppercase tracking-[0.16em] text-slate-600">or signup with email</span>
+              <span className="text-xs font-medium uppercase tracking-[0.16em] text-slate-600">
+                or signup with email
+              </span>
               <div className="h-px flex-1 bg-slate-800" />
             </div>
 
@@ -138,7 +168,9 @@ export default function RegisterPage() {
                 onClick={() => setRole("student")}
                 disabled={step === "otp"}
                 className={`rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed ${
-                  role === "student" ? "bg-indigo-500 text-white" : "text-slate-500 hover:bg-slate-900 hover:text-slate-200"
+                  role === "student"
+                    ? "bg-indigo-500 text-white"
+                    : "text-slate-500 hover:bg-slate-900 hover:text-slate-200"
                 }`}
               >
                 Student
@@ -148,7 +180,9 @@ export default function RegisterPage() {
                 onClick={() => setRole("teacher")}
                 disabled={step === "otp"}
                 className={`rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed ${
-                  role === "teacher" ? "bg-indigo-500 text-white" : "text-slate-500 hover:bg-slate-900 hover:text-slate-200"
+                  role === "teacher"
+                    ? "bg-indigo-500 text-white"
+                    : "text-slate-500 hover:bg-slate-900 hover:text-slate-200"
                 }`}
               >
                 Instructor
@@ -158,7 +192,10 @@ export default function RegisterPage() {
             {step === "details" ? (
               <form onSubmit={handleSendOtp} className="space-y-4">
                 <div className="relative">
-                  <UserCircle size={16} className="pointer-events-none absolute left-3.5 top-[2.45rem] z-10 text-slate-500" />
+                  <UserCircle
+                    size={16}
+                    className="pointer-events-none absolute left-3.5 top-[2.45rem] z-10 text-slate-500"
+                  />
                   <Input
                     label="Full Name"
                     placeholder="Aashish Maurya"
@@ -171,7 +208,10 @@ export default function RegisterPage() {
                 </div>
 
                 <div className="relative">
-                  <Mail size={16} className="pointer-events-none absolute left-3.5 top-[2.45rem] z-10 text-slate-500" />
+                  <Mail
+                    size={16}
+                    className="pointer-events-none absolute left-3.5 top-[2.45rem] z-10 text-slate-500"
+                  />
                   <Input
                     label="Email Address"
                     type="email"
@@ -185,7 +225,10 @@ export default function RegisterPage() {
                 </div>
 
                 <div className="relative">
-                  <LockKeyhole size={16} className="pointer-events-none absolute left-3.5 top-[2.45rem] z-10 text-slate-500" />
+                  <LockKeyhole
+                    size={16}
+                    className="pointer-events-none absolute left-3.5 top-[2.45rem] z-10 text-slate-500"
+                  />
                   <Input
                     label="Password"
                     type={showPassword ? "text" : "password"}
@@ -200,14 +243,19 @@ export default function RegisterPage() {
                     type="button"
                     onClick={() => setShowPassword((value) => !value)}
                     className="absolute right-3 top-[2.35rem] text-slate-500 transition-colors hover:text-slate-200"
-                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
                   >
                     {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
                   </button>
                 </div>
 
                 <div className="relative">
-                  <LockKeyhole size={16} className="pointer-events-none absolute left-3.5 top-[2.45rem] z-10 text-slate-500" />
+                  <LockKeyhole
+                    size={16}
+                    className="pointer-events-none absolute left-3.5 top-[2.45rem] z-10 text-slate-500"
+                  />
                   <Input
                     label="Confirm Password"
                     type={showConfirmPassword ? "text" : "password"}
@@ -222,13 +270,25 @@ export default function RegisterPage() {
                     type="button"
                     onClick={() => setShowConfirmPassword((value) => !value)}
                     className="absolute right-3 top-[2.35rem] text-slate-500 transition-colors hover:text-slate-200"
-                    aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                    aria-label={
+                      showConfirmPassword ? "Hide password" : "Show password"
+                    }
                   >
-                    {showConfirmPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                    {showConfirmPassword ? (
+                      <EyeOff size={17} />
+                    ) : (
+                      <Eye size={17} />
+                    )}
                   </button>
                 </div>
 
-                <Button type="submit" loading={loading} fullWidth size="lg" className="mt-2">
+                <Button
+                  type="submit"
+                  loading={loading}
+                  fullWidth
+                  size="lg"
+                  className="mt-2"
+                >
                   Send signup OTP <ArrowRight size={18} />
                 </Button>
               </form>
@@ -237,9 +297,15 @@ export default function RegisterPage() {
                 <div className="rounded-2xl border border-slate-800 bg-slate-950/45 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Verify account for</p>
-                      <p className="mt-1 text-sm font-semibold text-slate-200">{name.trim()}</p>
-                      <p className="mt-0.5 break-all text-xs text-slate-500">{normalizedEmail}</p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                        Verify account for
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-slate-200">
+                        {name.trim()}
+                      </p>
+                      <p className="mt-0.5 break-all text-xs text-slate-500">
+                        {normalizedEmail}
+                      </p>
                       <p className="mt-2 inline-flex rounded-full border border-indigo-400/20 bg-indigo-500/10 px-2 py-1 text-[11px] font-semibold capitalize text-indigo-200">
                         {role}
                       </p>
@@ -255,25 +321,42 @@ export default function RegisterPage() {
                 </div>
 
                 <div className="relative">
-                  <KeyRound size={16} className="pointer-events-none absolute left-3.5 top-[2.45rem] z-10 text-slate-500" />
+                  <KeyRound
+                    size={16}
+                    className="pointer-events-none absolute left-3.5 top-[2.45rem] z-10 text-slate-500"
+                  />
                   <Input
                     label="Enter OTP"
                     inputMode="numeric"
                     maxLength={6}
                     placeholder="6 digit OTP"
                     value={otp}
-                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    onChange={(e) =>
+                      setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
+                    }
                     error={errors.otp}
                     className="pl-10 tracking-[0.24em]"
                     autoComplete="one-time-code"
                   />
                 </div>
 
-                <Button type="submit" loading={loading} fullWidth size="lg" className="mt-2">
+                <Button
+                  type="submit"
+                  loading={loading}
+                  fullWidth
+                  size="lg"
+                  className="mt-2"
+                >
                   Verify & create account <ShieldCheck size={18} />
                 </Button>
 
-                <Button type="button" variant="ghost" fullWidth onClick={() => handleSendOtp()} disabled={loading}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  fullWidth
+                  onClick={() => handleSendOtp()}
+                  disabled={loading}
+                >
                   <RotateCcw size={16} /> Resend OTP
                 </Button>
               </form>
@@ -281,7 +364,10 @@ export default function RegisterPage() {
 
             <p className="mt-7 text-center text-sm text-slate-500">
               Already registered?{" "}
-              <Link href="/login" className="font-semibold text-indigo-300 underline decoration-indigo-500/30 underline-offset-4 hover:text-indigo-200">
+              <Link
+                href="/login"
+                className="font-semibold text-indigo-300 underline decoration-indigo-500/30 underline-offset-4 hover:text-indigo-200"
+              >
                 Sign in
               </Link>
             </p>
@@ -297,15 +383,22 @@ export default function RegisterPage() {
               Create accounts only after email OTP verification.
             </h1>
             <p className="mt-4 max-w-md text-sm leading-7 text-slate-400">
-              Users create a normal password, verify their email with OTP, and can later login using password, OTP, or Google.
+              Users create a normal password, verify their email with OTP, and
+              can later login using password, OTP, or Google.
             </p>
           </div>
           <div className="rounded-3xl border border-slate-800 bg-slate-950/50 p-5">
             <p className="text-sm font-semibold text-white">Auth workflow</p>
             <div className="mt-4 grid gap-3 text-sm text-slate-400">
-              <div className="rounded-2xl bg-slate-900/60 p-3">Password signup with OTP email verification</div>
-              <div className="rounded-2xl bg-slate-900/60 p-3">Password login as the default login method</div>
-              <div className="rounded-2xl bg-slate-900/60 p-3">Google login available on auth screens</div>
+              <div className="rounded-2xl bg-slate-900/60 p-3">
+                Password signup with OTP email verification
+              </div>
+              <div className="rounded-2xl bg-slate-900/60 p-3">
+                Password login as the default login method
+              </div>
+              <div className="rounded-2xl bg-slate-900/60 p-3">
+                Google login available on auth screens
+              </div>
             </div>
           </div>
         </section>
