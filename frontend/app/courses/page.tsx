@@ -25,6 +25,15 @@ export default function CoursesPage() {
   };
 
   useEffect(() => {
+    const fetchCourses = async (q = "") => {
+    setLoading(true);
+    try {
+      const data = await courseService.getAll(q || undefined);
+      setCourses(data);
+    } finally {
+      setLoading(false);
+    }
+  };
     fetchCourses();
   }, []);
 
@@ -45,7 +54,7 @@ export default function CoursesPage() {
             <p className="page-subtitle mt-3 max-w-2xl">Search and discover all available courses from your learning platform.</p>
           </div>
 
-          <form onSubmit={handleSearch} className="relative w-full lg:max-w-md">
+          <form onSubmit={handleSearch} className="relative w-full flex  gap-4 items-center justify-center lg:max-w-md">
             <Search size={17} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
             <input
               value={search}
