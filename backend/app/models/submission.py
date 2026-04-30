@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, Float
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, Float, UniqueConstraint
 from sqlalchemy.sql import func
 
 from app.core.database import Base
@@ -15,8 +15,11 @@ class Submission(Base):
     file_url = Column(String(500), nullable=True)
     file_public_id = Column(String(255), nullable=True)
 
-    # 0.0 - 100.0, null means not graded yet
     grade = Column(Float, nullable=True)
     feedback = Column(Text, nullable=True)
 
     submitted_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("student_id", "assignment_id", name="uq_student_assignment_submission"),
+    )
