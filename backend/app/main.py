@@ -19,6 +19,7 @@ from app.routes.assignments import router as assignments_router
 from app.routes.enrollments import router as enrollments_router
 from app.routes.progress import router as progress_router
 from app.routes.dashboard import router as dashboard_router
+from app.routes.chats import router as chats_router
 
 # create all tables
 Base.metadata.create_all(bind=engine)
@@ -46,6 +47,7 @@ app.include_router(assignments_router)
 app.include_router(enrollments_router)
 app.include_router(progress_router)
 app.include_router(dashboard_router)
+app.include_router(chats_router)
 
 
 @app.get("/")

@@ -1,8 +1,9 @@
 from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from app.core.database import Base
+from pgvector.sqlalchemy import Vector
 
 
 class Lesson(Base):
@@ -16,6 +17,9 @@ class Lesson(Base):
     video_url = Column(String(500), nullable=True)
     pdf_url = Column(String(500), nullable=True)
     external_video_link = Column(String(500), nullable=True)
+    transcript = Column(Text, nullable=True)         # raw transcript using whisper
+    notes = Column(Text, nullable=True)              # text content
+    chunks = relationship("LessonChunk", back_populates="lesson", cascade="all, delete-orphan")
 
     # Cloudinary public_ids for deletion
     video_public_id = Column(String(255), nullable=True)
@@ -29,3 +33,16 @@ class Lesson(Base):
         backref="lesson",
         cascade="all, delete-orphan"
     )
+
+
+class LessonChunk(Base):
+    __tablename__ = "lesson_chunk"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    source: Mapped[str] = mapped_column(String(50), nullable=False)  # "notes" or "transcript"
+    chunk_index: Mapped[int] = mapped_column(Integer, default=0)
+    embedding: Mapped[list[float]] = mapped_column(Vector(1536), nullable=False)
+    lesson_id: Mapped[int] = mapped_column(ForeignKey("lessons.id", ondelete="CASCADE"))
+
+    lesson: Mapped["Lesson"] = relationship(back_populates="chunks")
