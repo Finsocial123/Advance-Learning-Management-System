@@ -66,10 +66,10 @@ def delete_user(
             detail="You cannot delete your own account"
         )
 
-    db.delete(user)
+    user.is_active = False
     db.commit()
 
-    return {"message": f"User '{user.name}' deleted successfully"}
+    return {"message": f"User '{user.name}' deactivated successfully"}
 
 
 # Deactivate / reactivate a user

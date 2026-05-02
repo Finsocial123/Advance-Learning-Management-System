@@ -91,7 +91,6 @@ def create_lesson(
 def get_course_lessons(
     course_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
 ):
     course = db.query(Course).filter(Course.id == course_id).first()
 

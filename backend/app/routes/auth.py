@@ -277,7 +277,10 @@ def reset_password(data: ResetPasswordSchema, db: Session = Depends(get_db)):
 @router.post("/google", response_model=TokenResponse)
 def google_auth(data: GoogleAuthSchema, db: Session = Depends(get_db)):
     if not GOOGLE_CLIENT_ID:
-        raise HTTPException(status_code=500, detail="GOOGLE_CLIENT_ID is not configured")
+        raise HTTPException(
+            status_code=500,
+            detail="GOOGLE_CLIENT_ID is not configured in backend .env"
+        )
 
     try:
         payload = id_token.verify_oauth2_token(
@@ -286,7 +289,11 @@ def google_auth(data: GoogleAuthSchema, db: Session = Depends(get_db)):
             GOOGLE_CLIENT_ID,
         )
     except Exception as exc:
-        raise HTTPException(status_code=401, detail="Invalid Google credential") from exc
+        print("GOOGLE VERIFY ERROR:", repr(exc))
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid Google credential or Google Client ID mismatch"
+        )
 
     google_sub = payload.get("sub")
     email = payload.get("email")
@@ -295,39 +302,54 @@ def google_auth(data: GoogleAuthSchema, db: Session = Depends(get_db)):
     picture = payload.get("picture")
 
     if not google_sub or not email:
-        raise HTTPException(status_code=401, detail="Google account data is incomplete")
+        raise HTTPException(
+            status_code=401,
+            detail="Google account data is incomplete"
+        )
 
     normalized_email = email.lower().strip()
 
-    user = db.query(User).filter(User.google_sub == google_sub).first()
+    try:
+        user = db.query(User).filter(User.google_sub == google_sub).first()
 
-    if not user:
-        user = db.query(User).filter(User.email == normalized_email).first()
+        if not user:
+            user = db.query(User).filter(User.email == normalized_email).first()
 
-        if user:
-            # Link Google login to an existing local account with same email.
-            user.google_sub = google_sub
-            user.auth_provider = "google"
-            user.email_verified = bool(email_verified)
-            if picture and not user.avatar_url:
-                user.avatar_url = picture
-        else:
-            user = User(
-                name=name,
-                email=normalized_email,
-                hashed_password=None,
-                role="student",
-                auth_provider="google",
-                google_sub=google_sub,
-                email_verified=bool(email_verified),
-                avatar_url=picture,
-            )
-            db.add(user)
+            if user:
+                user.google_sub = google_sub
+                user.auth_provider = "google"
+                user.email_verified = bool(email_verified)
 
-        db.commit()
-        db.refresh(user)
+                if picture and not user.avatar_url:
+                    user.avatar_url = picture
+            else:
+                user = User(
+                    name=name,
+                    email=normalized_email,
+                    hashed_password=None,
+                    role="student",
+                    auth_provider="google",
+                    google_sub=google_sub,
+                    email_verified=bool(email_verified),
+                    avatar_url=picture,
+                    is_active=True,
+                )
+                db.add(user)
 
-    if not user.is_active:
-        raise HTTPException(status_code=403, detail="Account is deactivated")
+            db.commit()
+            db.refresh(user)
 
-    return build_token_response(user)
+        if not user.is_active:
+            raise HTTPException(status_code=403, detail="Account is deactivated")
+
+        return build_token_response(user)
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        db.rollback()
+        print("GOOGLE DB ERROR:", repr(exc))
+        raise HTTPException(
+            status_code=500,
+            detail="Google login failed because of database/server error. Check backend terminal."
+        )

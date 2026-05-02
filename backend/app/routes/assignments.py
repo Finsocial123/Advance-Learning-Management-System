@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.core.database import get_db
 from app.models.assignment import Assignment
@@ -11,7 +11,7 @@ from app.models.enrollment import Enrollment
 from app.models.user import User
 from app.schemas.assignment import AssignmentCreate, AssignmentUpdate
 from app.schemas.submission import GradeSubmission
-from app.utils.dependencies import get_current_user, require_role
+from app.utils.dependencies import require_role
 from app.utils.cloudinary import upload_file
 
 router = APIRouter(
@@ -62,7 +62,6 @@ def create_assignment(
 def get_course_assignments(
     course_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
 ):
     course = db.query(Course).filter(Course.id == course_id).first()
 
@@ -153,7 +152,20 @@ def submit_assignment(
     if not assignment:
         raise HTTPException(status_code=404, detail="Assignment not found")
 
-    # check student is enrolled in the course
+    # Check assignment deadline
+    if assignment.due_date:
+        due_date = assignment.due_date
+
+        if due_date.tzinfo is None:
+            due_date = due_date.replace(tzinfo=timezone.utc)
+
+        if due_date < datetime.now(timezone.utc):
+            raise HTTPException(
+                status_code=400,
+                detail="Assignment deadline has passed"
+            )
+
+    # Check student is enrolled in the course
     enrollment = db.query(Enrollment).filter(
         Enrollment.student_id == current_user.id,
         Enrollment.course_id == assignment.course_id
@@ -165,7 +177,7 @@ def submit_assignment(
             detail="You are not enrolled in this course"
         )
 
-    # check if already submitted
+    # Check if already submitted
     existing = db.query(Submission).filter(
         Submission.student_id == current_user.id,
         Submission.assignment_id == assignment_id
@@ -201,7 +213,6 @@ def submit_assignment(
     db.refresh(submission)
 
     return {"message": "Assignment submitted successfully"}
-
 
 # Teacher/admin views all submissions for an assignment
 @router.get("/{assignment_id}/submissions")

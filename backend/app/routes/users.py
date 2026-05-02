@@ -36,16 +36,17 @@ def update_my_profile(
         current_user.bio = bio
 
     if avatar:
-        # delete old avatar from cloudinary if exists
-        if current_user.avatar_url and hasattr(current_user, "avatar_public_id"):
+        if current_user.avatar_public_id:
             delete_file(current_user.avatar_public_id, resource_type="image")
 
-        result = upload_file(
-            avatar.file,
-            folder="lms/avatars",
-            resource_type="image"
-        )
-        current_user.avatar_url = result["url"]
+    result = upload_file(
+        avatar.file,
+        folder="lms/avatars",
+        resource_type="image"
+    )
+
+    current_user.avatar_url = result["url"]
+    current_user.avatar_public_id = result["public_id"]
 
     db.commit()
     db.refresh(current_user)
