@@ -86,7 +86,10 @@ export default function CourseForm({
                 <Image
                   src={preview}
                   alt="preview"
-                  className="w-full h-full object-cover"
+                  fill
+                  sizes="100vw"
+                  className="object-cover"
+                  unoptimized={preview.startsWith("blob:")}
                 />
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                   <CloudUpload className="text-white" size={32} />

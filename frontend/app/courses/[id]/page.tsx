@@ -104,7 +104,7 @@ export default function CourseDetailPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       {/* header */}
-      <div className="surface-card rounded-[2rem] overflow-hidden">
+      <div className="surface-card rounded-4xl overflow-hidden">
         {course.thumbnail_url && (
           <div className="h-56 overflow-hidden">
             <Image

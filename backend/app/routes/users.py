@@ -30,7 +30,7 @@ def update_my_profile(
     current_user: User = Depends(get_current_user)
 ):
     if name:
-        current_user.name = name
+        current_user.name = name.strip()
 
     if bio is not None:
         current_user.bio = bio
@@ -39,14 +39,14 @@ def update_my_profile(
         if current_user.avatar_public_id:
             delete_file(current_user.avatar_public_id, resource_type="image")
 
-    result = upload_file(
-        avatar.file,
-        folder="lms/avatars",
-        resource_type="image"
-    )
+        result = upload_file(
+            avatar.file,
+            folder="lms/avatars",
+            resource_type="image"
+        )
 
-    current_user.avatar_url = result["url"]
-    current_user.avatar_public_id = result["public_id"]
+        current_user.avatar_url = result["url"]
+        current_user.avatar_public_id = result["public_id"]
 
     db.commit()
     db.refresh(current_user)

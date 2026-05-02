@@ -12,7 +12,11 @@ interface CourseCardProps {
   actionSlot?: React.ReactNode;
 }
 
-export default function CourseCard({ course, showTeacher = true, actionSlot }: CourseCardProps) {
+export default function CourseCard({
+  course,
+  showTeacher = true,
+  actionSlot,
+}: CourseCardProps) {
   const router = useRouter();
 
   return (
@@ -27,6 +31,7 @@ export default function CourseCard({ course, showTeacher = true, actionSlot }: C
             src={course.thumbnail_url}
             alt={course.title}
             fill
+            sizes="(max-width: 768px) 100vw, 33vw"
             className="object-cover transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
@@ -53,7 +58,9 @@ export default function CourseCard({ course, showTeacher = true, actionSlot }: C
         </button>
 
         {course.description && (
-          <p className="mb-5 line-clamp-2 text-sm leading-6 text-slate-400">{course.description}</p>
+          <p className="mb-5 line-clamp-2 text-sm leading-6 text-slate-400">
+            {course.description}
+          </p>
         )}
 
         <div className="mt-auto flex items-center justify-between gap-3 border-t border-slate-800/90 pt-4">
@@ -71,7 +78,11 @@ export default function CourseCard({ course, showTeacher = true, actionSlot }: C
           </div>
         </div>
 
-        {actionSlot && <div className="mt-4 border-t border-slate-800/90 pt-4">{actionSlot}</div>}
+        {actionSlot && (
+          <div className="mt-4 border-t border-slate-800/90 pt-4">
+            {actionSlot}
+          </div>
+        )}
       </div>
     </article>
   );

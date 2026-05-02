@@ -47,9 +47,16 @@ export function getRoleBadgeColor(role: string): string {
 export function getErrorMessage(error: unknown): string {
   if (error && typeof error === "object" && "response" in error) {
     const axiosError = error as {
-      response?: { data?: { detail?: string } };
+      response?: { data?: { detail?: string | { msg?: string }[] } };
     };
-    return axiosError.response?.data?.detail || "Something went wrong";
+
+    const detail = axiosError.response?.data?.detail;
+
+    if (typeof detail === "string") return detail;
+    if (Array.isArray(detail)) {
+      return detail.map((item) => item.msg).filter(Boolean).join(", ") || "Validation failed";
+    }
   }
+
   return "Something went wrong";
 }

@@ -85,12 +85,15 @@ export default function ProfilePage() {
           {/* avatar */}
           <div className="flex items-center gap-6">
             <div className="relative">
-              <div className="w-20 h-20 rounded-full overflow-hidden bg-violet-600/20 border-2 border-violet-500/30 flex items-center justify-center">
+              <div className="relative w-20 h-20 rounded-full overflow-hidden bg-violet-600/20 border-2 border-violet-500/30 flex items-center justify-center">
                 {preview ? (
                   <Image
                     src={preview}
                     alt="avatar"
-                    className="w-full h-full object-cover"
+                    fill
+                    sizes="80px"
+                    className="object-cover"
+                    unoptimized={preview.startsWith("blob:")}
                   />
                 ) : (
                   <span className="text-2xl font-bold text-violet-400">
