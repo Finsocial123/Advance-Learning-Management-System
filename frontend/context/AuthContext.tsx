@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { userService } from "@/services/user.service";
 import { logout as clearAuth } from "@/lib/auth";
 import type { User } from "@/types";
@@ -18,7 +18,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchUser = async () => {
+
+  const fetchUser = useCallback(async () => {
     try {
       const data = await userService.getMe();
       setUser(data);
@@ -28,10 +29,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchUser();
+    let isMounted = true;
+
+    const init = async () => {
+      try {
+        const data = await userService.getMe();
+        if (isMounted) setUser(data);
+      } catch {
+        if (isMounted) {
+          clearAuth();
+          setUser(null);
+        }
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    init();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const logout = () => {

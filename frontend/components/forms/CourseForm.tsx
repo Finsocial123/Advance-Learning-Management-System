@@ -26,7 +26,9 @@ export default function CourseForm({
   const [title, setTitle] = useState(initial?.title || "");
   const [description, setDescription] = useState(initial?.description || "");
   const [thumbnail, setThumbnail] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(initial?.thumbnail_url || null);
+  const [preview, setPreview] = useState<string | null>(
+    initial?.thumbnail_url || null,
+  );
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ title?: string }>({});
 
@@ -74,14 +76,18 @@ export default function CourseForm({
       />
 
       <div className="flex flex-col gap-2">
-        <label className="text-xs font-bold uppercase tracking-[0.1em] text-zinc-500 px-1">
+        <label className="text-xs font-bold uppercase tracking-widest text-zinc-500 px-1">
           Thumbnail Image
         </label>
         <label className="cursor-pointer group">
-          <div className="w-full h-52 bg-[#0c0c0e] border-2 border-dashed border-white/5 rounded-[2rem] flex items-center justify-center group-hover:border-violet-500/40 group-hover:bg-violet-500/5 transition-all duration-300 overflow-hidden relative">
+          <div className="w-full h-52 bg-[#0c0c0e] border-2 border-dashed border-white/5 rounded-4xl flex items-center justify-center group-hover:border-violet-500/40 group-hover:bg-violet-500/5 transition-all duration-300 overflow-hidden relative">
             {preview ? (
               <>
-                <Image src={preview} alt="preview" width={400} height={200} className="w-full h-full object-cover" />
+                <Image
+                  src={preview}
+                  alt="preview"
+                  className="w-full h-full object-cover"
+                />
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                   <CloudUpload className="text-white" size={32} />
                 </div>
@@ -92,13 +98,22 @@ export default function CourseForm({
                   <ImagePlus size={32} />
                 </div>
                 <div className="text-center">
-                  <span className="block text-sm font-semibold text-zinc-300">Click to upload</span>
-                  <span className="text-[10px] uppercase tracking-wider">PNG, JPG up to 5MB</span>
+                  <span className="block text-sm font-semibold text-zinc-300">
+                    Click to upload
+                  </span>
+                  <span className="text-[10px] uppercase tracking-wider">
+                    PNG, JPG up to 5MB
+                  </span>
                 </div>
               </div>
             )}
           </div>
-          <input type="file" accept="image/*" className="hidden" onChange={handleFile} />
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFile}
+          />
         </label>
       </div>
 

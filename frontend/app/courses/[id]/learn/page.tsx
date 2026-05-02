@@ -19,17 +19,9 @@ import { progressService } from "@/services/progress.service";
 import { assignmentService } from "@/services/assignment.service";
 import { useAuthStore } from "@/store/authStore";
 
-import {
-  Lesson,
-  CourseProgress,
-  Assignment,
-  Submission,
-} from "@/types";
+import { Lesson, CourseProgress, Assignment, Submission } from "@/types";
 
-import {
-  getErrorMessage,
-  formatDateTime,
-} from "@/lib/utils";
+import { getErrorMessage, formatDateTime } from "@/lib/utils";
 
 import Button from "@/components/ui/Button";
 import ProgressBar from "@/components/ui/ProgressBar";
@@ -41,6 +33,7 @@ export default function LearnPage() {
   const router = useRouter();
 
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const hasHydrated = useAuthStore((state) => state._hasHydrated);
 
   const courseId = Number(params.id);
   const initialLessonId = searchParams.get("lesson");
@@ -51,11 +44,11 @@ export default function LearnPage() {
   const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
 
   const [assignments, setAssignments] = useState<Assignment[]>([]);
-  const [activeAssignment, setActiveAssignment] =
-    useState<Assignment | null>(null);
+  const [activeAssignment, setActiveAssignment] = useState<Assignment | null>(
+    null,
+  );
 
-  const [mySubmission, setMySubmission] =
-    useState<Submission | null>(null);
+  const [mySubmission, setMySubmission] = useState<Submission | null>(null);
 
   const [submitFile, setSubmitFile] = useState<File | null>(null);
 
@@ -63,81 +56,71 @@ export default function LearnPage() {
   const [markingDone, setMarkingDone] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const [view, setView] =
-    useState<"lesson" | "assignment">("lesson");
+  const [view, setView] = useState<"lesson" | "assignment">("lesson");
 
   const loadMySubmission = async (assignmentId: number) => {
     try {
-      const sub =
-        await assignmentService.getMySubmission(
-          assignmentId
-        );
+      const sub = await assignmentService.getMySubmission(assignmentId);
       setMySubmission(sub);
     } catch {
       setMySubmission(null);
     }
   };
 
- 
   useEffect(() => {
+    if (!hasHydrated) return;
+
     if (!isAuthenticated) {
       router.replace("/login");
       return;
     }
 
-     const load = async () => {
-    try {
-      const [l, p, a] = await Promise.all([
-        lessonService.getByCourse(courseId),
-        progressService.getCourseProgress(courseId),
-        assignmentService.getByCourse(courseId) as any,
-      ]);
+    const load = async () => {
+      try {
+        const [l, p, a] = await Promise.all([
+          lessonService.getByCourse(courseId),
+          progressService.getCourseProgress(courseId),
+          assignmentService.getByCourse(courseId),
+        ]);
 
-      setLessons(l);
-      setProgress(p);
-      setAssignments(a);
+        setLessons(l);
+        setProgress(p);
+        setAssignments(a);
 
-      if (initialAssignmentId) {
-        const found = a.find(
-          (x: Assignment) =>
-            x.id === Number(initialAssignmentId)
-        );
+        if (initialAssignmentId) {
+          const found = a.find((x) => x.id === Number(initialAssignmentId));
+          if (found) {
+            setActiveAssignment(found);
+            setView("assignment");
+            loadMySubmission(found.id);
+          }
+        } else {
+          const target = initialLessonId
+            ? l.find((x) => x.id === Number(initialLessonId))
+            : l[0];
 
-        if (found) {
-          setActiveAssignment(found);
-          setView("assignment");
-          loadMySubmission(found.id);
+          if (target) setCurrentLesson(target);
         }
-      } else {
-        const target = initialLessonId
-          ? l.find(
-              (x: Lesson) =>
-                x.id === Number(initialLessonId)
-            )
-          : l[0];
-
-        if (target) {
-          setCurrentLesson(target);
-        }
+      } catch {
+        toast.error("Could not load course. Are you enrolled?");
+        router.push(`/courses/${courseId}`);
+      } finally {
+        setLoading(false);
       }
-    } catch {
-      toast.error(
-        "Could not load course. Are you enrolled?"
-      );
-      router.push(`/courses/${courseId}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+    };
 
     load();
-  }, [courseId, isAuthenticated, router, initialAssignmentId, initialLessonId]);
+  }, [
+    hasHydrated,
+    courseId,
+    isAuthenticated,
+    router,
+    initialAssignmentId,
+    initialLessonId,
+  ]);
 
   const isCompleted = (lessonId: number) =>
-    progress?.lessons.find(
-      (l) => l.lesson_id === lessonId
-    )?.completed ?? false;
+    progress?.lessons.find((l) => l.lesson_id === lessonId)?.completed ?? false;
 
   const handleMarkComplete = async () => {
     if (!currentLesson) return;
@@ -146,21 +129,14 @@ export default function LearnPage() {
 
     try {
       if (isCompleted(currentLesson.id)) {
-        await progressService.markIncomplete(
-          currentLesson.id
-        );
+        await progressService.markIncomplete(currentLesson.id);
         toast.success("Marked as incomplete");
       } else {
-        await progressService.markComplete(
-          currentLesson.id
-        );
+        await progressService.markComplete(currentLesson.id);
         toast.success("Lesson completed!");
       }
 
-      const updated =
-        await progressService.getCourseProgress(
-          courseId
-        );
+      const updated = await progressService.getCourseProgress(courseId);
 
       setProgress(updated);
     } catch (err) {
@@ -178,7 +154,7 @@ export default function LearnPage() {
     try {
       await assignmentService.submit(
         activeAssignment.id,
-        submitFile || undefined
+        submitFile || undefined,
       );
 
       toast.success("Assignment submitted!");
@@ -192,9 +168,7 @@ export default function LearnPage() {
     }
   };
 
-  const currentIndex = lessons.findIndex(
-    (l) => l.id === currentLesson?.id
-  );
+  const currentIndex = lessons.findIndex((l) => l.id === currentLesson?.id);
 
   if (loading) return <FullPageSpinner />;
 
@@ -208,14 +182,10 @@ export default function LearnPage() {
               Course Progress
             </p>
 
-            <ProgressBar
-              value={progress.overall_progress}
-              size="sm"
-            />
+            <ProgressBar value={progress.overall_progress} size="sm" />
 
             <p className="text-xs text-zinc-600 mt-1">
-              {progress.completed_lessons}/
-              {progress.total_lessons} lessons
+              {progress.completed_lessons}/{progress.total_lessons} lessons
             </p>
           </div>
         )}
@@ -235,22 +205,15 @@ export default function LearnPage() {
                   setView("lesson");
                 }}
                 className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/5 transition-colors border-b border-white/10/50 last:border-0 cursor-pointer ${
-                  currentLesson?.id === lesson.id &&
-                  view === "lesson"
+                  currentLesson?.id === lesson.id && view === "lesson"
                     ? "bg-violet-500/10"
                     : ""
                 }`}
               >
                 {isCompleted(lesson.id) ? (
-                  <CheckCircle
-                    size={15}
-                    className="text-green-400 shrink-0"
-                  />
+                  <CheckCircle size={15} className="text-green-400 shrink-0" />
                 ) : (
-                  <Circle
-                    size={15}
-                    className="text-zinc-600 shrink-0"
-                  />
+                  <Circle size={15} className="text-zinc-600 shrink-0" />
                 )}
 
                 <span className="text-sm text-zinc-300 line-clamp-2">
@@ -277,16 +240,12 @@ export default function LearnPage() {
                   loadMySubmission(a.id);
                 }}
                 className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/5 transition-colors border-b border-white/10/50 last:border-0 cursor-pointer ${
-                  activeAssignment?.id === a.id &&
-                  view === "assignment"
+                  activeAssignment?.id === a.id && view === "assignment"
                     ? "bg-orange-500/10"
                     : ""
                 }`}
               >
-                <ClipboardList
-                  size={15}
-                  className="text-orange-400 shrink-0"
-                />
+                <ClipboardList size={15} className="text-orange-400 shrink-0" />
 
                 <span className="text-sm text-zinc-300 line-clamp-2">
                   {a.title}
@@ -301,12 +260,11 @@ export default function LearnPage() {
       <div className="flex-1 min-w-0 space-y-5">
         {view === "lesson" && currentLesson && (
           <>
-            <div className="surface-card rounded-[2rem] p-6">
+            <div className="surface-card rounded-4xl p-6">
               <div className="flex items-start justify-between gap-4 mb-4">
                 <div>
                   <p className="text-xs text-zinc-600 font-mono mb-1">
-                    Lesson {currentIndex + 1} of{" "}
-                    {lessons.length}
+                    Lesson {currentIndex + 1} of {lessons.length}
                   </p>
 
                   <h1 className="text-xl font-bold text-zinc-100">
@@ -323,9 +281,7 @@ export default function LearnPage() {
                 <Button
                   size="sm"
                   variant={
-                    isCompleted(currentLesson.id)
-                      ? "secondary"
-                      : "primary"
+                    isCompleted(currentLesson.id) ? "secondary" : "primary"
                   }
                   onClick={handleMarkComplete}
                   loading={markingDone}
@@ -350,7 +306,7 @@ export default function LearnPage() {
                   <video
                     src={currentLesson.video_url}
                     controls
-                    className="w-full rounded-xl max-h-[28.75rem] bg-black"
+                    className="w-full rounded-xl max-h-115 bg-black"
                   />
                 </div>
               )}
@@ -363,7 +319,7 @@ export default function LearnPage() {
                       <iframe
                         src={currentLesson.external_video_link.replace(
                           "watch?v=",
-                          "embed/"
+                          "embed/",
                         )}
                         className="w-full h-full"
                         allowFullScreen
@@ -389,9 +345,7 @@ export default function LearnPage() {
                 {currentLesson.external_video_link &&
                   currentLesson.video_url && (
                     <a
-                      href={
-                        currentLesson.external_video_link
-                      }
+                      href={currentLesson.external_video_link}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 px-4 py-2 bg-orange-500/10 border border-orange-500/20 rounded-lg text-sm text-orange-400 hover:bg-orange-500/20 transition-colors"
@@ -408,11 +362,7 @@ export default function LearnPage() {
               <Button
                 variant="secondary"
                 disabled={currentIndex === 0}
-                onClick={() =>
-                  setCurrentLesson(
-                    lessons[currentIndex - 1]
-                  )
-                }
+                onClick={() => setCurrentLesson(lessons[currentIndex - 1])}
               >
                 <ChevronLeft size={16} />
                 Previous
@@ -420,15 +370,8 @@ export default function LearnPage() {
 
               <Button
                 variant="secondary"
-                disabled={
-                  currentIndex ===
-                  lessons.length - 1
-                }
-                onClick={() =>
-                  setCurrentLesson(
-                    lessons[currentIndex + 1]
-                  )
-                }
+                disabled={currentIndex === lessons.length - 1}
+                onClick={() => setCurrentLesson(lessons[currentIndex + 1])}
               >
                 Next
                 <ChevronRight size={16} />
@@ -437,139 +380,117 @@ export default function LearnPage() {
           </>
         )}
 
-        {view === "assignment" &&
-          activeAssignment && (
-            <div className="surface-card rounded-[2rem] p-6 space-y-5">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <ClipboardList
-                    size={18}
-                    className="text-orange-400"
-                  />
+        {view === "assignment" && activeAssignment && (
+          <div className="surface-card rounded-[2rem] p-6 space-y-5">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <ClipboardList size={18} className="text-orange-400" />
 
-                  <h2 className="text-xl font-bold text-zinc-100">
-                    {activeAssignment.title}
-                  </h2>
-                </div>
+                <h2 className="text-xl font-bold text-zinc-100">
+                  {activeAssignment.title}
+                </h2>
+              </div>
 
-                {activeAssignment.description && (
-                  <p className="text-zinc-400 leading-relaxed mt-2">
-                    {activeAssignment.description}
-                  </p>
+              {activeAssignment.description && (
+                <p className="text-zinc-400 leading-relaxed mt-2">
+                  {activeAssignment.description}
+                </p>
+              )}
+
+              {activeAssignment.due_date && (
+                <p className="text-sm text-orange-400 mt-2">
+                  Due: {formatDateTime(activeAssignment.due_date)}
+                </p>
+              )}
+            </div>
+
+            {mySubmission ? (
+              <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 space-y-2">
+                <p className="text-sm font-medium text-green-400">
+                  ✓ Submitted
+                </p>
+
+                {mySubmission.file_url && (
+                  <a
+                    href={mySubmission.file_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-400 underline"
+                  >
+                    View my submission
+                  </a>
                 )}
 
-                {activeAssignment.due_date && (
-                  <p className="text-sm text-orange-400 mt-2">
-                    Due:{" "}
-                    {formatDateTime(
-                      activeAssignment.due_date
+                {mySubmission.grade !== null ? (
+                  <div className="pt-2 border-t border-green-500/20">
+                    <p className="text-sm text-zinc-300">
+                      Grade:
+                      <span className="font-bold text-violet-400 ml-1">
+                        {mySubmission.grade}/100
+                      </span>
+                    </p>
+
+                    {mySubmission.feedback && (
+                      <p className="text-sm text-zinc-400 mt-1">
+                        Feedback: {mySubmission.feedback}
+                      </p>
                     )}
+                  </div>
+                ) : (
+                  <p className="text-xs text-zinc-500">
+                    Awaiting grade from teacher
                   </p>
                 )}
               </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-sm text-zinc-400">
+                  Submit your work for this assignment. You can attach a file.
+                </p>
 
-              {mySubmission ? (
-                <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 space-y-2">
-                  <p className="text-sm font-medium text-green-400">
-                    ✓ Submitted
-                  </p>
-
-                  {mySubmission.file_url && (
-                    <a
-                      href={mySubmission.file_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-blue-400 underline"
-                    >
-                      View my submission
-                    </a>
-                  )}
-
-                  {mySubmission.grade !== null ? (
-                    <div className="pt-2 border-t border-green-500/20">
-                      <p className="text-sm text-zinc-300">
-                        Grade:
-                        <span className="font-bold text-violet-400 ml-1">
-                          {mySubmission.grade}/100
-                        </span>
-                      </p>
-
-                      {mySubmission.feedback && (
-                        <p className="text-sm text-zinc-400 mt-1">
-                          Feedback:{" "}
-                          {mySubmission.feedback}
-                        </p>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-zinc-500">
-                      Awaiting grade from teacher
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <p className="text-sm text-zinc-400">
-                    Submit your work for this
-                    assignment. You can attach a
-                    file.
-                  </p>
-
-                  <label className="cursor-pointer block">
-                    <div
-                      className={`w-full h-28 border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 transition-colors ${
-                        submitFile
-                          ? "border-violet-500/50 bg-violet-500/5"
-                          : "border-white/10 hover:border-violet-500/30 bg-white/5"
-                      }`}
-                    >
-                      <Upload
-                        size={22}
-                        className={
-                          submitFile
-                            ? "text-violet-400"
-                            : "text-zinc-500"
-                        }
-                      />
-
-                      <span className="text-sm text-zinc-500">
-                        {submitFile
-                          ? submitFile.name
-                          : "Click to attach file (optional)"}
-                      </span>
-                    </div>
-
-                    <input
-                      type="file"
-                      className="hidden"
-                      onChange={(e) =>
-                        setSubmitFile(
-                          e.target.files?.[0] || null
-                        )
+                <label className="cursor-pointer block">
+                  <div
+                    className={`w-full h-28 border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 transition-colors ${
+                      submitFile
+                        ? "border-violet-500/50 bg-violet-500/5"
+                        : "border-white/10 hover:border-violet-500/30 bg-white/5"
+                    }`}
+                  >
+                    <Upload
+                      size={22}
+                      className={
+                        submitFile ? "text-violet-400" : "text-zinc-500"
                       }
                     />
-                  </label>
 
-                  <Button
-                    onClick={
-                      handleSubmitAssignment
-                    }
-                    loading={submitting}
-                  >
-                    <Upload size={15} />
-                    Submit Assignment
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
+                    <span className="text-sm text-zinc-500">
+                      {submitFile
+                        ? submitFile.name
+                        : "Click to attach file (optional)"}
+                    </span>
+                  </div>
 
-        {lessons.length === 0 &&
-          view === "lesson" && (
-            <div className="text-center py-16 text-zinc-500">
-              No lessons available yet.
-            </div>
-          )}
+                  <input
+                    type="file"
+                    className="hidden"
+                    onChange={(e) => setSubmitFile(e.target.files?.[0] || null)}
+                  />
+                </label>
+
+                <Button onClick={handleSubmitAssignment} loading={submitting}>
+                  <Upload size={15} />
+                  Submit Assignment
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {lessons.length === 0 && view === "lesson" && (
+          <div className="text-center py-16 text-zinc-500">
+            No lessons available yet.
+          </div>
+        )}
       </div>
     </div>
   );
