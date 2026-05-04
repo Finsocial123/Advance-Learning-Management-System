@@ -1,85 +1,108 @@
-# import os
-# import httpx
-
-# async def transcribe_video(video_url: str) -> str:
-#     """
-#     Download video from R2 and send to Groq Whisper for transcription.
-#     Returns transcript as plain text.
-#     """
-
-#  # Download video bytes from R2
-#     async with httpx.AsyncClient() as http:
-#         response = await http.get(video_url)
-#         video_bytes = response.content
-
-#     #Send to Whisper
-#     async with httpx.AsyncClient() as http:
-#         response = await http.post(
-#             "https://api.groq.com/openai/v1/audio/transcriptions",
-#             headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY')}"},
-#             files={"file": ("video.mp4", video_bytes, "video/mp4")},
-#             data={"model": "whisper-large-v3"}
-#         )
-#         result = response.json()
-
-#     return result.get("text", "")
-
-
 import os
+import math
 import tempfile
-import subprocess
+import asyncio
 import httpx
-from faster_whisper import WhisperModel
+import ffmpeg
+import imageio_ffmpeg as iio_ffmpeg
+import base64
+from dotenv import load_dotenv
 
-# Load once at startup
-model = WhisperModel("base", device="cpu", compute_type="int8")
+load_dotenv()
 
+MAX_FILE_SIZE = 23 * 1024 * 1024  # 23 MB
 
-def extract_audio(video_path: str) -> str:
-    audio_path = video_path.rsplit(".", 1)[0] + "_audio.mp3"
-    cmd = [
-        "ffmpeg", "-y", "-i", video_path,
-        "-ac", "1", "-ar", "16000", "-vn", "-b:a", "32k",
-        audio_path
-    ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode != 0:
-        raise RuntimeError(f"ffmpeg failed: {result.stderr}")
-    return audio_path
+# Set ffmpeg binary for ffmpeg-python
+os.environ["FFMPEG_BINARY"] = iio_ffmpeg.get_ffmpeg_exe()
 
+def encode_audio_to_base64(audio_bytes):
+    return base64.b64encode(audio_bytes).decode("utf-8")
 
-async def transcribe_video(video_url: str) -> str:
-    """
-    Download video from Cloudinary, extract audio with ffmpeg,
-    transcribe with faster-whisper. Returns plain text transcript.
-    """
+def extract_audio(video_bytes: bytes) -> bytes:
+    """Extract audio from video bytes, return MP3 bytes."""
+    with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as video_file:
+        video_file.write(video_bytes)
+        video_path = video_file.name
 
-    # Download video from Cloudinary
-    async with httpx.AsyncClient(timeout=120) as http:
-        response = await http.get(video_url)
-        video_bytes = response.content
-
-    # Save video to temp file
-    with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp:
-        tmp.write(video_bytes)
-        video_path = tmp.name
-
-    audio_path = None
-
+    audio_path = video_path.replace(".mp4", ".mp3")
     try:
-        # Extract audio with ffmpeg
-        audio_path = extract_audio(video_path)
-
-        # Transcribe
-        segments, info = model.transcribe(audio_path, beam_size=5)
-
-        text = " ".join(seg.text for seg in segments)
-
-        return text.strip()
-
+        (
+            ffmpeg
+            .input(video_path)
+            .output(
+                audio_path,
+                format="mp3",
+                acodec="libmp3lame",
+                ar=16000,
+                ac=1,
+                audio_bitrate="32k"
+            )
+            .overwrite_output()
+            .run(quiet=True, cmd=os.environ["FFMPEG_BINARY"])
+        )
+        with open(audio_path, "rb") as f:
+            return f.read()
     finally:
-        # Always clean up temp files
-        if os.path.exists(video_path):
-            os.remove(video_path)
-        if audio_path and os.path.exists(audio_path):
-            os.remove(audio_path)
+        os.unlink(video_path)
+        if os.path.exists(audio_path):
+            os.unlink(audio_path)
+
+def split_audio(audio_bytes: bytes, chunk_size: int = MAX_FILE_SIZE) -> list[bytes]:
+    """Split audio bytes into chunks under the size limit."""
+    if len(audio_bytes) <= chunk_size:
+        return [audio_bytes]
+    num_chunks = math.ceil(len(audio_bytes) / chunk_size)
+    chunk_length = len(audio_bytes) // num_chunks
+    chunks = []
+    for i in range(num_chunks):
+        start = i * chunk_length
+        end = start + chunk_length if i < num_chunks - 1 else len(audio_bytes)
+        chunks.append(audio_bytes[start:end])
+    return chunks
+
+async def transcribe_audio_bytes(audio_bytes: bytes, filename: str = "audio.mp3") -> str:
+    base64_audio = base64.b64encode(audio_bytes).decode("utf-8")
+
+    async with httpx.AsyncClient(timeout=120) as http:
+        response = await http.post(
+            "https://openrouter.ai/api/v1/audio/transcriptions",
+            headers={
+                "Authorization": f"Bearer {os.getenv('OPENROUTER_API_KEY')}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "openai/whisper-large-v3-turbo",
+                "input_audio": {
+                    "data": base64_audio,
+                    "format": "mp3"
+                },
+                "response_format": "text",
+                "language": "en"
+            }
+        )
+
+        # log the error body if it fails
+        if response.status_code != 200:
+            print(f"OpenRouter STT error: {response.status_code} - {response.text}")
+            response.raise_for_status()
+
+        result = response.json()
+
+        # response_format="text" still returns JSON with a text field
+        if isinstance(result, dict):
+            return result.get("text", "")
+        return result  # sometimes returns plain string
+    
+
+async def transcribe_video(video_bytes: bytes) -> str:
+    """Full pipeline: extract audio, split if needed, transcribe."""
+    # Run extraction in thread to avoid blocking event loop
+    audio_bytes = await asyncio.to_thread(extract_audio, video_bytes)
+    if len(audio_bytes) <= MAX_FILE_SIZE:
+        return await transcribe_audio_bytes(audio_bytes)
+    chunks = split_audio(audio_bytes)
+    transcripts = []
+    for chunk in chunks:
+        transcript = await transcribe_audio_bytes(chunk)
+        transcripts.append(transcript)
+    return " ".join(transcripts)
