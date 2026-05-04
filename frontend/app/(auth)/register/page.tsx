@@ -9,6 +9,7 @@ import { authService } from "@/services/auth.service";
 import { userService } from "@/services/user.service";
 import { useAuthStore } from "@/store/authStore";
 import { getErrorMessage } from "@/lib/utils";
+import { PASSWORD_RULE_TEXT, validateEmailAddress, validateStrongPassword } from "@/lib/validators";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import GoogleLoginButton from "@/components/auth/GoogleLoginButton";
@@ -39,9 +40,11 @@ export default function RegisterPage() {
     const nextErrors: typeof errors = {};
     if (!name.trim()) nextErrors.name = "Name is required";
     else if (name.trim().length < 2) nextErrors.name = "Name must be at least 2 characters";
-    if (!normalizedEmail) nextErrors.email = "Email is required";
-    if (!password) nextErrors.password = "Password is required";
-    else if (password.length < 6) nextErrors.password = "Password must be at least 6 characters";
+    const emailError = validateEmailAddress(normalizedEmail);
+    if (emailError) nextErrors.email = emailError;
+
+    const passwordError = validateStrongPassword(password);
+    if (passwordError) nextErrors.password = passwordError;
     if (!confirmPassword) nextErrors.confirmPassword = "Confirm your password";
     else if (password !== confirmPassword) nextErrors.confirmPassword = "Passwords do not match";
     setErrors(nextErrors);
@@ -124,7 +127,9 @@ export default function RegisterPage() {
               <p className="mt-2 text-sm text-slate-400">Create your LMS account, verify email with OTP, or continue with Google.</p>
             </div>
 
-            <GoogleLoginButton />
+            <div className="flex flex-col items-center gap-3">
+              <GoogleLoginButton />
+            </div>
 
             <div className="my-6 flex items-center gap-3">
               <div className="h-px flex-1 bg-slate-800" />
@@ -132,7 +137,7 @@ export default function RegisterPage() {
               <div className="h-px flex-1 bg-slate-800" />
             </div>
 
-            <div className="mb-5 grid grid-cols-2 gap-2 rounded-2xl border border-slate-800 bg-slate-950/45 p-1">
+            {/* <div className="mb-5 grid grid-cols-2 gap-2 rounded-2xl border border-slate-800 bg-slate-950/45 p-1">
               <button
                 type="button"
                 onClick={() => setRole("student")}
@@ -153,7 +158,7 @@ export default function RegisterPage() {
               >
                 Instructor
               </button>
-            </div>
+            </div> */}
 
             {step === "details" ? (
               <form onSubmit={handleSendOtp} className="space-y-4">
@@ -193,6 +198,7 @@ export default function RegisterPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     error={errors.password}
+                    hint={PASSWORD_RULE_TEXT}
                     className="pl-10 pr-10"
                     autoComplete="new-password"
                   />
@@ -288,7 +294,7 @@ export default function RegisterPage() {
           </div>
         </section>
 
-        <section className="hidden min-h-[34rem] flex-col justify-between border-l border-slate-800 bg-linear-to-br from-sky-500/10 via-slate-950/50 to-indigo-500/14 p-8 lg:flex">
+        <section className="hidden min-h-136 flex-col justify-between border-l border-slate-800 bg-linear-to-br from-sky-500/10 via-slate-950/50 to-indigo-500/14 p-8 lg:flex">
           <div>
             <span className="inline-flex items-center rounded-full border border-sky-400/20 bg-sky-500/10 px-3 py-1 text-xs font-semibold text-sky-200">
               Verified signup flow

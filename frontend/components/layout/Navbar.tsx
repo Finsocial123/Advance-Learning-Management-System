@@ -20,7 +20,7 @@ export default function Navbar() {
   const handleLogout = () => {
     logout();
     setMobileOpen(false);
-    router.push("/login");
+    router.replace("/login");
   };
 
   const navLinks = [
@@ -81,7 +81,7 @@ export default function Navbar() {
                       alt={user.name}
                       width={34}
                       height={34}
-                      className="h-[34px] w-[34px] rounded-xl border border-slate-700 object-cover"
+                      className="h-8.5 w-8.5 rounded-xl border border-slate-700 object-cover"
                     />
                   ) : (
                     <div className="flex h-[34px] w-[34px] items-center justify-center rounded-xl border border-indigo-400/20 bg-indigo-500/10 text-xs font-bold text-indigo-200">

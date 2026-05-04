@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import { ArrowLeft, ArrowRight, Eye, EyeOff, KeyRound, LockKeyhole, Mail, RotateCcw, ShieldCheck } from "lucide-react";
 import { authService } from "@/services/auth.service";
 import { getErrorMessage } from "@/lib/utils";
+import { PASSWORD_RULE_TEXT, validateEmailAddress, validateStrongPassword } from "@/lib/validators";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 
@@ -30,7 +31,8 @@ export default function ForgotPasswordPage() {
 
   const validateEmail = () => {
     const nextErrors: typeof errors = {};
-    if (!normalizedEmail) nextErrors.email = "Email is required";
+    const emailError = validateEmailAddress(normalizedEmail);
+    if (emailError) nextErrors.email = emailError;
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   };
@@ -39,8 +41,8 @@ export default function ForgotPasswordPage() {
     const nextErrors: typeof errors = {};
     if (!otp.trim()) nextErrors.otp = "OTP is required";
     else if (otp.trim().length !== 6) nextErrors.otp = "Enter 6 digit OTP";
-    if (!password) nextErrors.password = "New password is required";
-    else if (password.length < 6) nextErrors.password = "Password must be at least 6 characters";
+    const passwordError = validateStrongPassword(password);
+    if (passwordError) nextErrors.password = passwordError;
     if (!confirmPassword) nextErrors.confirmPassword = "Confirm your password";
     else if (password !== confirmPassword) nextErrors.confirmPassword = "Passwords do not match";
     setErrors(nextErrors);
@@ -153,6 +155,7 @@ export default function ForgotPasswordPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 error={errors.password}
+                hint={PASSWORD_RULE_TEXT}
                 className="pl-10 pr-10"
                 autoComplete="new-password"
               />

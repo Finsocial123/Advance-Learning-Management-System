@@ -9,6 +9,7 @@ import { authService } from "@/services/auth.service";
 import { userService } from "@/services/user.service";
 import { useAuthStore } from "@/store/authStore";
 import { getErrorMessage } from "@/lib/utils";
+import { validateEmailAddress } from "@/lib/validators";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import GoogleLoginButton from "@/components/auth/GoogleLoginButton";
@@ -41,7 +42,9 @@ export default function LoginPage() {
 
   const validatePasswordLogin = () => {
     const nextErrors: typeof errors = {};
-    if (!normalizedEmail) nextErrors.email = "Email is required";
+    const emailError = validateEmailAddress(normalizedEmail);
+    if (emailError) nextErrors.email = emailError;
+
     if (!password) nextErrors.password = "Password is required";
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
@@ -49,7 +52,8 @@ export default function LoginPage() {
 
   const validateEmail = () => {
     const nextErrors: typeof errors = {};
-    if (!normalizedEmail) nextErrors.email = "Email is required";
+    const emailError = validateEmailAddress(normalizedEmail);
+    if (emailError) nextErrors.email = emailError;
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   };
@@ -124,7 +128,7 @@ export default function LoginPage() {
   return (
     <div className="auth-grid-bg -mx-4 -my-5 flex min-h-[calc(100vh-4rem)] items-center justify-center px-4 py-10 sm:-mx-6 lg:-mx-8">
       <div className="grid w-full max-w-5xl overflow-hidden rounded-3xl border border-slate-800 bg-slate-950/55 shadow-[0_30px_110px_-70px_rgba(99,102,241,0.85)] backdrop-blur-xl lg:grid-cols-[1fr_0.92fr]">
-        <section className="hidden min-h-[34rem] flex-col justify-between border-r border-slate-800 bg-linear-to-br from-indigo-500/14 via-slate-950/50 to-sky-500/8 p-8 lg:flex">
+        <section className="hidden min-h-136 flex-col justify-between border-r border-slate-800 bg-linear-to-br from-indigo-500/14 via-slate-950/50 to-sky-500/8 p-8 lg:flex">
           <div>
             <div className="mb-7 flex h-12 w-12 items-center justify-center rounded-2xl bg-linear-to-br from-indigo-500 via-violet-500 to-sky-500 text-white shadow-[0_18px_44px_-24px_rgba(99,102,241,0.95)]">
               <BookOpen size={24} />
@@ -160,7 +164,9 @@ export default function LoginPage() {
               <p className="mt-2 text-sm text-slate-400">Use password login, Google login, or OTP login.</p>
             </div>
 
-            <GoogleLoginButton />
+            <div className="flex flex-col items-center gap-3">
+              <GoogleLoginButton />
+            </div>
 
             <div className="my-6 flex items-center gap-3">
               <div className="h-px flex-1 bg-slate-800" />

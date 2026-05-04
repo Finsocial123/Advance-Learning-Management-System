@@ -16,8 +16,25 @@ export default function HomePage() {
   const [courses, setCourses] = useState<Course[]>([]);
 
   useEffect(() => {
-    courseService.getAll().then((data) => setCourses(data.slice(0, 6)));
-  }, []);
+  let mounted = true;
+
+  const loadCourses = async () => {
+    try {
+      const data = await courseService.getAll();
+      if (mounted) {
+        setCourses(data.slice(0, 6));
+      }
+    } catch (error) {
+      console.error("Failed to load courses:", error);
+    }
+  };
+
+  loadCourses();
+
+  return () => {
+    mounted = false;
+  };
+}, []);
 
   return (
     <div className="space-y-12 pb-12">

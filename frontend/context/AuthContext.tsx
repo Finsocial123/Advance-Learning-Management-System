@@ -1,14 +1,9 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
-import { getToken, logout as clearAuth } from "@/lib/auth";
-
-interface User {
-  id: number;
-  name: string;
-  email: string;
-  role: "student" | "teacher" | "admin";
-}
+import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { userService } from "@/services/user.service";
+import { logout as clearAuth } from "@/lib/auth";
+import type { User } from "@/types";
 
 interface AuthContextType {
   user: User | null;
@@ -23,69 +18,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  
-const fetchUser = async () => {
-    const token = getToken();
-    if (!token) {
-      setUser(null);
-      setLoading(false);
-      return;
-    }
 
+  const fetchUser = useCallback(async () => {
     try {
-      const response = await fetch("http://localhost:8000/auth/me", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setUser(data);
-      } else {
-        clearAuth();
-        setUser(null);
-      }
-    } catch (error) {
-      console.error("Failed to fetch user", error);
+      const data = await userService.getMe();
+      setUser(data);
+    } catch {
+      clearAuth();
+      setUser(null);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-
-  
   useEffect(() => {
-    const fetchUser = async () => {
-    const token = getToken();
-    if (!token) {
-      setUser(null);
-      setLoading(false);
-      return;
-    }
+    let isMounted = true;
 
-    try {
-      const response = await fetch("http://localhost:8000/auth/me", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setUser(data);
-      } else {
-        clearAuth();
-        setUser(null);
+    const init = async () => {
+      try {
+        const data = await userService.getMe();
+        if (isMounted) setUser(data);
+      } catch {
+        if (isMounted) {
+          clearAuth();
+          setUser(null);
+        }
+      } finally {
+        if (isMounted) setLoading(false);
       }
-    } catch (error) {
-      console.error("Failed to fetch user", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
-    fetchUser();
+    init();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const logout = () => {
@@ -100,8 +67,8 @@ const fetchUser = async () => {
   );
 }
 
-export const useAuth = () => {
+export const useAuthContext = () => {
   const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth must be used within an AuthProvider");
+  if (!context) throw new Error("useAuthContext must be used within AuthProvider");
   return context;
 };

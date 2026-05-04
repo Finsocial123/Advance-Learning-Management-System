@@ -23,5 +23,6 @@ class User(Base):
     role = Column(String(20), default="student", nullable=False)
 
     avatar_url = Column(String(500), nullable=True)
+    avatar_public_id = Column(String(255), nullable=True)
     bio = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True)

@@ -98,15 +98,13 @@ export default function CourseDetailPage() {
   if (loading) return <FullPageSpinner />;
   if (!course) return null;
 
-  const isOwner =
-    user?.role === "admin" || user?.id === course.teacher_id;
-  const isTeacherOrAdmin =
-    user?.role === "admin" || user?.role === "teacher";
+  const isOwner = user?.role === "admin" || user?.id === course.teacher_id;
+  const isTeacherOrAdmin = user?.role === "admin" || user?.role === "teacher";
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       {/* header */}
-      <div className="surface-card rounded-[2rem] overflow-hidden">
+      <div className="surface-card rounded-4xl overflow-hidden">
         {course.thumbnail_url && (
           <div className="h-56 overflow-hidden">
             <Image
@@ -154,9 +152,7 @@ export default function CourseDetailPage() {
                 {enrolled ? (
                   <>
                     <Button
-                      onClick={() =>
-                        router.push(`/courses/${courseId}/learn`)
-                      }
+                      onClick={() => router.push(`/courses/${courseId}/learn`)}
                     >
                       <PlayCircle size={16} />
                       Continue Learning
@@ -190,9 +186,7 @@ export default function CourseDetailPage() {
                 <Button
                   variant="secondary"
                   onClick={() =>
-                    router.push(
-                      `/teacher/courses/${courseId}/lessons/create`
-                    )
+                    router.push(`/teacher/courses/${courseId}/lessons/create`)
                   }
                 >
                   Add Lesson
@@ -201,7 +195,7 @@ export default function CourseDetailPage() {
                   variant="secondary"
                   onClick={() =>
                     router.push(
-                      `/teacher/courses/${courseId}/assignments/create`
+                      `/teacher/courses/${courseId}/assignments/create`,
                     )
                   }
                 >
@@ -237,12 +231,17 @@ export default function CourseDetailPage() {
                 key={lesson.id}
                 lesson={lesson}
                 onClick={
-                  enrolled || isOwner
+                  user?.role === "student" && enrolled
                     ? () =>
                         router.push(
-                          `/courses/${courseId}/learn?lesson=${lesson.id}`
+                          `/courses/${courseId}/learn?lesson=${lesson.id}`,
                         )
-                    : undefined
+                    : isOwner
+                      ? () =>
+                          router.push(
+                            `/teacher/courses/${courseId}/lessons/${lesson.id}/edit`,
+                          )
+                      : undefined
                 }
                 actionSlot={
                   isOwner ? (
@@ -252,7 +251,7 @@ export default function CourseDetailPage() {
                         variant="secondary"
                         onClick={() =>
                           router.push(
-                            `/teacher/courses/${courseId}/lessons/${lesson.id}/edit`
+                            `/teacher/courses/${courseId}/lessons/${lesson.id}/edit`,
                           )
                         }
                       >
@@ -301,7 +300,7 @@ export default function CourseDetailPage() {
                       size="sm"
                       onClick={() =>
                         router.push(
-                          `/courses/${courseId}/learn?assignment=${a.id}`
+                          `/courses/${courseId}/learn?assignment=${a.id}`,
                         )
                       }
                     >
@@ -314,7 +313,7 @@ export default function CourseDetailPage() {
                       variant="secondary"
                       onClick={() =>
                         router.push(
-                          `/teacher/courses/${courseId}/assignments/${a.id}/submissions`
+                          `/teacher/courses/${courseId}/assignments/${a.id}/submissions`,
                         )
                       }
                     >

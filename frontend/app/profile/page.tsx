@@ -19,6 +19,7 @@ export default function ProfilePage() {
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const hasHydrated = useAuthStore((state) => state._hasHydrated);
 
   const [name, setName] = useState("");
   const [bio, setBio] = useState("");
@@ -28,18 +29,21 @@ export default function ProfilePage() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (!hasHydrated) return;
+
     if (!isAuthenticated) {
       router.replace("/login");
       return;
     }
+
     if (user) {
       setName(user.name);
       setBio(user.bio || "");
       setPreview(user.avatar_url || null);
     }
-  }, [user, isAuthenticated, router]);
+  }, [hasHydrated, user, isAuthenticated, router]);
 
-  if (!user) return <FullPageSpinner />;
+  if (!hasHydrated || !user) return <FullPageSpinner />;
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -76,19 +80,20 @@ export default function ProfilePage() {
         </p>
       </div>
 
-      <div className="surface-card rounded-[2rem] p-8">
+      <div className="surface-card rounded-4xl p-8">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* avatar */}
           <div className="flex items-center gap-6">
             <div className="relative">
-              <div className="w-20 h-20 rounded-full overflow-hidden bg-violet-600/20 border-2 border-violet-500/30 flex items-center justify-center">
+              <div className="relative w-20 h-20 rounded-full overflow-hidden bg-violet-600/20 border-2 border-violet-500/30 flex items-center justify-center">
                 {preview ? (
                   <Image
                     src={preview}
                     alt="avatar"
-                    width={100}
-                    height={100}
-                    className="w-full h-full object-cover"
+                    fill
+                    sizes="80px"
+                    className="object-cover"
+                    unoptimized={preview.startsWith("blob:")}
                   />
                 ) : (
                   <span className="text-2xl font-bold text-violet-400">
