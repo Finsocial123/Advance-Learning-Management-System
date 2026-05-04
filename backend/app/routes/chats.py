@@ -40,7 +40,7 @@ async def create_session(user_id: int, db:Annotated[AsyncSession, Depends(get_as
 
 #get all user sessions
 @router.get("/{user_id}/sessions")
-async def get_sessions(user_id: int, db:Annotated[AsyncSession, Depends(get_db)]):
+async def get_sessions(user_id: int, db:Annotated[AsyncSession, Depends(get_async_db)]):
     result = await db.execute(
         select(ChatSession)
         .where(ChatSession.user_id == user_id)
