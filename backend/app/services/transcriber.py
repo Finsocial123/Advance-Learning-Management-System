@@ -18,8 +18,38 @@ os.environ["FFMPEG_BINARY"] = iio_ffmpeg.get_ffmpeg_exe()
 def encode_audio_to_base64(audio_bytes):
     return base64.b64encode(audio_bytes).decode("utf-8")
 
+# def extract_audio(video_bytes: bytes) -> bytes:
+#     """Extract audio from video bytes, return MP3 bytes."""
+#     with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as video_file:
+#         video_file.write(video_bytes)
+#         video_path = video_file.name
+
+#     audio_path = video_path.replace(".mp4", ".mp3")
+#     try:
+#         (
+#             ffmpeg
+#             .input(video_path)
+#             .output(
+#                 audio_path,
+#                 format="mp3",
+#                 acodec="libmp3lame",
+#                 ar=16000,
+#                 ac=1,
+#                 audio_bitrate="32k"
+#             )
+#             .overwrite_output()
+#             .run(quiet=True, cmd=os.environ["FFMPEG_BINARY"])
+#         )
+#         with open(audio_path, "rb") as f:
+#             return f.read()
+#     finally:
+#         os.unlink(video_path)
+#         if os.path.exists(audio_path):
+#             os.unlink(audio_path)
+
+
+
 def extract_audio(video_bytes: bytes) -> bytes:
-    """Extract audio from video bytes, return MP3 bytes."""
     with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as video_file:
         video_file.write(video_bytes)
         video_path = video_file.name
@@ -38,12 +68,17 @@ def extract_audio(video_bytes: bytes) -> bytes:
                 audio_bitrate="32k"
             )
             .overwrite_output()
-            .run(quiet=True, cmd=os.environ["FFMPEG_BINARY"])
-        )
+            .run(quiet=True, cmd=os.environ["FFMPEG_BINARY"])  
+        )        #change the quiet to False, when you want to see the logs for debug
         with open(audio_path, "rb") as f:
             return f.read()
+    except ffmpeg.Error as e:
+        # e.stderr is bytes, decode it for readability
+        error_message = e.stderr.decode() if isinstance(e.stderr, bytes) else str(e.stderr)
+        raise Exception(f"ffmpeg extraction failed:\n{error_message}")
     finally:
-        os.unlink(video_path)
+        if os.path.exists(video_path):
+            os.unlink(video_path)
         if os.path.exists(audio_path):
             os.unlink(audio_path)
 
@@ -81,22 +116,20 @@ async def transcribe_audio_bytes(audio_bytes: bytes, filename: str = "audio.mp3"
             }
         )
 
-        # log the error body if it fails
+        
         if response.status_code != 200:
             print(f"OpenRouter STT error: {response.status_code} - {response.text}")
             response.raise_for_status()
 
         result = response.json()
 
-        # response_format="text" still returns JSON with a text field
         if isinstance(result, dict):
             return result.get("text", "")
-        return result  # sometimes returns plain string
+        return result 
     
 
 async def transcribe_video(video_bytes: bytes) -> str:
     """Full pipeline: extract audio, split if needed, transcribe."""
-    # Run extraction in thread to avoid blocking event loop
     audio_bytes = await asyncio.to_thread(extract_audio, video_bytes)
     if len(audio_bytes) <= MAX_FILE_SIZE:
         return await transcribe_audio_bytes(audio_bytes)

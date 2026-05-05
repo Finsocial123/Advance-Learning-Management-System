@@ -26,7 +26,6 @@ class ChatSession(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
-
     user = relationship("User", back_populates="chat_sessions")
     messages: Mapped[list["ChatMessage"]] = relationship(
         back_populates="session",
@@ -39,7 +38,7 @@ class ChatMessage(Base):
     __tablename__ = "chat_message"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    role: Mapped[ChatRole] = mapped_column(Enum(ChatRole, name="chatrole", create_type=True), nullable=False)
+    role: Mapped[ChatRole] = mapped_column(Enum(ChatRole, name="chatrole", schema="public", create_type=True), nullable=False)
     content: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC), index=True)
 

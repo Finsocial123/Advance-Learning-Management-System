@@ -1,9 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 import httpx
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Optional, Annotated
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from io import BytesIO
 
-from app.core.database import get_db
+
+from app.core.database import get_db, get_async_db
 from app.models.lesson import Lesson
 from app.models.course import Course
 from app.models.user import User
@@ -14,10 +18,16 @@ from app.services.embedder import chunk_and_embed_lesson
 from app.services.extractor import extract_text_from_pdf
 from app.services.transcriber import transcribe_video
 
+from io import BytesIO
+
+
 router = APIRouter(
     prefix="/lessons",
     tags=["Lessons"]
 )
+
+ALLOWED_VIDEO_TYPES = {"video/mp4", "video/webm", "video/quicktime"}
+MAX_VIDEO_SIZE = 500 * 1024 * 1024  # 500MB
 
 
 def course_owner_or_admin(course: Course, user: User):
@@ -25,7 +35,7 @@ def course_owner_or_admin(course: Course, user: User):
         raise HTTPException(status_code=403, detail="Not your course")
 
 
-# Create lesson inside a course
+
 @router.post("/{course_id}")
 async def create_lesson(
     course_id: int,
@@ -35,38 +45,56 @@ async def create_lesson(
     external_video_link: Optional[str] = Form(None),
     video: Optional[UploadFile] = File(None),
     pdf: Optional[UploadFile] = File(None),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(require_role(["teacher", "admin"]))
 ):
-    course = db.query(Course).filter(Course.id == course_id).first()
-
+    result = await db.execute(select(Course).where(Course.id == course_id))
+    course = result.scalars().first()
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
-
-    course_owner_or_admin(course, current_user)
+    course_owner_or_admin(course, current_user)  
 
     video_url = None
     video_public_id = None
-    pdf_url = None
-    pdf_public_id = None
+    transcript = None
 
     if video:
-        result = upload_file(
-            video.file,
+        video_bytes = await video.read()
+
+        if video.content_type not in ALLOWED_VIDEO_TYPES:
+            raise HTTPException(status_code=400, detail="Invalid video format")
+        if len(video_bytes) > MAX_VIDEO_SIZE:
+            raise HTTPException(status_code=400, detail="File too large. Max 500MB")
+
+        upload_result = upload_file(
+            BytesIO(video_bytes),
             folder="lms/videos",
             resource_type="video"
         )
-        video_url = result["url"]
-        video_public_id = result["public_id"]
+        video_url = upload_result["url"]
+        video_public_id = upload_result["public_id"]
+
+        try:
+            transcript = await transcribe_video(video_bytes)
+        except Exception as e:
+            raise HTTPException(status_code=422, detail=f"Transcription failed: {str(e)}")
+        if not transcript:
+            raise HTTPException(status_code=422, detail="Could not transcribe video")
+
+    pdf_url = None
+    pdf_public_id = None
+    pdf_text = None
 
     if pdf:
-        result = upload_file(
-            pdf.file,
+        pdf_bytes = await pdf.read()
+        upload_result = upload_file(
+            BytesIO(pdf_bytes),
             folder="lms/pdfs",
             resource_type="raw"
         )
-        pdf_url = result["url"]
-        pdf_public_id = result["public_id"]
+        pdf_url = upload_result["url"]
+        pdf_public_id = upload_result["public_id"]
+        pdf_text = extract_text_from_pdf(pdf_bytes)
 
     lesson = Lesson(
         title=title,
@@ -75,73 +103,53 @@ async def create_lesson(
         external_video_link=external_video_link,
         video_url=video_url,
         video_public_id=video_public_id,
+        transcript=transcript,
         pdf_url=pdf_url,
         pdf_public_id=pdf_public_id,
+        notes=pdf_text,
         course_id=course_id
     )
-    db.add(lesson)
-    db.commit()
-    db.refresh(lesson)
+    db.add(lesson)            
+    await db.commit()
+    await db.refresh(lesson)    
 
-    # embed PDF content if a PDF was uploaded
-    if video_url: 
-        # Transcribe via Whisper
-        try:
-            transcript = await transcribe_video(video_url)
-        except Exception as e:
-            raise HTTPException(status_code=422, detail=f"Transcription failed: {str(e)}")
-
-        if not transcript:
-            raise HTTPException(status_code=422, detail="Could not transcribe video")
-
-        lesson.video_url = video_url         #Save the video URL
-        lesson.transcript = transcript      #trascript of video
-        db.commit()
-
-        chunk_count = await chunk_and_embed_lesson(
+    chunks_created = 0
+    if transcript:
+        chunks_created = await chunk_and_embed_lesson(
             lesson_id=lesson.id,
             text=transcript,
-            source="transcript",    # only difference from PDF
+            source="transcript",
             db=db
         )
-        db.commit()
+        await db.commit()
         return {
             "lesson_id": lesson.id,
             "video_url": video_url,
             "transcript_preview": transcript[:200],
-            "chunks_created": chunk_count,
+            "chunks_created": chunks_created,
             "message": "Video uploaded, transcribed and embedded successfully"
         }
 
-    if pdf_url:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(pdf_url)
-            pdf_bytes = response.content
+    if pdf_text:
+        chunks_created = await chunk_and_embed_lesson(
+            lesson_id=lesson.id,
+            text=pdf_text,
+            source="notes",
+            db=db
+        )
+        await db.commit()
+        return {
+            "lesson_id": lesson.id,
+            "characters": len(pdf_text),
+            "chunks_created": chunks_created,
+            "preview": pdf_text[:200],
+            "message": "PDF processed and embedded successfully"
+        }
 
-        text = extract_text_from_pdf(pdf_bytes)
-
-        if text:
-            lesson.notes = text
-            chunks_count  = await chunk_and_embed_lesson(
-                lesson_id=lesson.id,
-                text=text,
-                source="notes",
-                db=db
-            )
-            db.commit()
-            return {
-                "lesson_id": lesson.id,
-                "characters": len(text),
-                "chunks_created": chunks_count,
-                "preview": text[:200],
-                "message": "PDF processed and embedded successfully"
-            }
-        
     return {
         "message": "Lesson created successfully",
         "lesson_id": lesson.id
     }
-    
 
 
 # Get all lessons for a course
