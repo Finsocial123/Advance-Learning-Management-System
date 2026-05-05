@@ -7,7 +7,7 @@ from app.core.database import engine, Base
 from app.models import (
     User, AuthOTP, Course, Lesson,
     Assignment, Submission,
-    Enrollment, LessonProgress
+    Enrollment, LessonProgress, VideoWatchProgress
 )
 
 from app.routes.auth import router as auth_router
