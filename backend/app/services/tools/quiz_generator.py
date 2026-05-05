@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.services.rag import retrieve_context
-from app import models
+from app.models.lesson import LessonChunk
 
 async def generate_quiz(lesson_id: int, num_questions: int, db: AsyncSession) -> dict:
     """
@@ -10,8 +10,8 @@ async def generate_quiz(lesson_id: int, num_questions: int, db: AsyncSession) ->
     """
 
     result = await db.execute(
-        select(models.LessonChunk)
-        .where(models.LessonChunk.lesson_id == lesson_id)
+        select(LessonChunk)
+        .where(LessonChunk.lesson_id == lesson_id)
         .limit(10)
     )
 

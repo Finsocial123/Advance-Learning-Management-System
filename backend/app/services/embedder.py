@@ -7,7 +7,7 @@ from sqlalchemy import delete
 import os
 
 from app.client import client
-from app.models.lesson import LessonChunk  # ← import the CLASS, not the module
+from app.models.lesson import LessonChunk  
 
 
 splitter = RecursiveCharacterTextSplitter(
@@ -23,8 +23,8 @@ async def chunk_and_embed_lesson(lesson_id: int, text: str, source: str, db: Ses
     Returns number of chunks created.
     """
 
-    db.execute(                                      # ← sync, no await
-        delete(LessonChunk).where(                   # ← class directly, not module
+    await db.execute(                                 
+        delete(LessonChunk).where(                   
             LessonChunk.lesson_id == lesson_id,
             LessonChunk.source == source
         )
@@ -42,7 +42,7 @@ async def chunk_and_embed_lesson(lesson_id: int, text: str, source: str, db: Ses
     embeddings = [item.embedding for item in response.data]
 
     db_chunks = [
-        LessonChunk(                                 # ← class directly, not lessons.LessonChunk
+        LessonChunk(                             
             lesson_id=lesson_id,
             content=chunk_text,
             source=source,
@@ -53,5 +53,6 @@ async def chunk_and_embed_lesson(lesson_id: int, text: str, source: str, db: Ses
     ]
 
     db.add_all(db_chunks)
+    await db.commit()
 
     return len(db_chunks)
