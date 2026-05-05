@@ -77,6 +77,68 @@ export interface CourseProgress {
   lessons: LessonProgressItem[];
 }
 
+// ---------- Admin user management types ----------
+
+export interface AdminUserListItem extends User {
+  total_courses?: number;
+  total_enrolled_courses?: number;
+  average_progress?: number;
+}
+
+export interface PaginatedUsersResponse {
+  items: AdminUserListItem[];
+  total: number;
+  page: number;
+  limit: number;
+  total_pages: number;
+}
+
+export interface TeacherCourseReport {
+  id: number;
+  title: string;
+  description: string | null;
+  thumbnail_url: string | null;
+  total_lessons: number;
+  total_enrolled_students: number;
+  created_at: string;
+}
+
+export interface TeacherReport {
+  total_courses: number;
+  courses: TeacherCourseReport[];
+}
+
+export interface StudentLessonProgressReport {
+  lesson_id: number;
+  title: string;
+  order: number;
+  completed: boolean;
+  completed_at: string | null;
+}
+
+export interface StudentCourseProgressReport {
+  course_id: number;
+  course_title: string;
+  teacher_name: string;
+  progress: number;
+  total_lessons: number;
+  completed_lessons: number;
+  pending_lessons: number;
+  lessons: StudentLessonProgressReport[];
+}
+
+export interface StudentReport {
+  total_enrolled_courses: number;
+  average_progress: number;
+  courses: StudentCourseProgressReport[];
+}
+
+export interface AdminUserDetails {
+  user: User;
+  teacher_report: TeacherReport | null;
+  student_report: StudentReport | null;
+}
+
 // ---------- Dashboard types ----------
 
 export interface StudentProgressItem {

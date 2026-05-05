@@ -1,79 +1,100 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import {
-  Shield,
-  Trash2,
-  UserCheck,
-  UserX,
+  BookOpen,
+  ChevronLeft,
+  ChevronRight,
   GraduationCap,
   Search,
+  Trash2,
+  UserCheck,
+  Users,
+  UserX,
 } from "lucide-react";
-import { userService } from "@/services/user.service";
 import { adminService } from "@/services/admin.service";
 import { useRoleGuard } from "@/hooks/useRoleGuard";
 import { useAuthStore } from "@/store/authStore";
-import { getErrorMessage } from "@/lib/utils";
-import { User } from "@/types";
+import { cn, getErrorMessage, getInitials } from "@/lib/utils";
+import { AdminUserListItem } from "@/types";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import Modal from "@/components/ui/Modal";
-import Spinner from "@/components/ui/Spinner";
-import { getInitials } from "@/lib/utils";
-import Image from "next/image";
+import Spinner, { FullPageSpinner } from "@/components/ui/Spinner";
+
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 50];
+
+type ManageRole = "teacher" | "student";
 
 export default function AdminUsersPage() {
-  useRoleGuard(["admin"]);
+  const { checked } = useRoleGuard(["admin"]);
+  const router = useRouter();
   const currentUser = useAuthStore((state) => state.user);
 
-  const [users, setUsers] = useState<User[]>([]);
-  const [filtered, setFiltered] = useState<User[]>([]);
+  const [activeRole, setActiveRole] = useState<ManageRole>("teacher");
+  const [users, setUsers] = useState<AdminUserListItem[]>([]);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [deleteModal, setDeleteModal] = useState<User | null>(null);
+  const [deleteModal, setDeleteModal] = useState<AdminUserListItem | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
 
-  const load = async () => {
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setPage(1);
+    }, 350);
+
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  const loadUsers = useCallback(async () => {
+    setLoading(true);
     try {
-      const data = await userService.getAllUsers();
-      setUsers(data);
-      setFiltered(data);
+      const data = await adminService.getPaginatedUsers({
+        role: activeRole,
+        search: debouncedSearch || undefined,
+        page,
+        limit,
+      });
+      setUsers(data.items);
+      setTotal(data.total);
+      setTotalPages(data.total_pages || 1);
+    } catch (err) {
+      toast.error(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
+  }, [activeRole, debouncedSearch, page, limit]);
+
+  useEffect(() => {
+    if (checked) loadUsers();
+  }, [checked, loadUsers]);
+
+  const handleTabChange = (role: ManageRole) => {
+    setActiveRole(role);
+    setSearch("");
+    setDebouncedSearch("");
+    setPage(1);
   };
-
-  useEffect(() => {
-    load();
-  }, []);
-
-  useEffect(() => {
-    const q = search.toLowerCase();
-    setFiltered(
-      users.filter(
-        (u) =>
-          u.name.toLowerCase().includes(q) ||
-          u.email.toLowerCase().includes(q) ||
-          u.role.includes(q)
-      )
-    );
-  }, [search, users]);
 
   const handleRoleChange = async (
     userId: number,
-    newRole: "student" | "teacher"
+    newRole: "student" | "teacher",
   ) => {
     setActionLoading(userId);
     try {
-      const updated = await adminService.updateRole(userId, newRole);
-      setUsers((prev) =>
-        prev.map((u) => (u.id === userId ? updated : u))
-      );
-      toast.success(
-        `User promoted to ${newRole}`
-      );
+      await adminService.updateRole(userId, newRole);
+      toast.success(`User changed to ${newRole}`);
+      await loadUsers();
     } catch (err) {
       toast.error(getErrorMessage(err));
     } finally {
@@ -86,11 +107,11 @@ export default function AdminUsersPage() {
     try {
       const updated = await adminService.toggleActive(userId);
       setUsers((prev) =>
-        prev.map((u) => (u.id === userId ? updated : u))
+        prev.map((u) =>
+          u.id === userId ? { ...u, is_active: updated.is_active } : u,
+        ),
       );
-      toast.success(
-        updated.is_active ? "User activated" : "User deactivated"
-      );
+      toast.success(updated.is_active ? "User activated" : "User deactivated");
     } catch (err) {
       toast.error(getErrorMessage(err));
     } finally {
@@ -103,9 +124,9 @@ export default function AdminUsersPage() {
     setDeleting(true);
     try {
       await adminService.deleteUser(deleteModal.id);
-      setUsers((prev) => prev.filter((u) => u.id !== deleteModal.id));
-      toast.success("User deleted");
+      toast.success("User deactivated");
       setDeleteModal(null);
+      await loadUsers();
     } catch (err) {
       toast.error(getErrorMessage(err));
     } finally {
@@ -113,204 +134,328 @@ export default function AdminUsersPage() {
     }
   };
 
-  if (loading)
-    return (
-      <div className="flex justify-center py-20">
-        <Spinner size="lg" />
-      </div>
-    );
+  if (!checked) return <FullPageSpinner />;
+
+  const showingFrom = total === 0 ? 0 : (page - 1) * limit + 1;
+  const showingTo = Math.min(page * limit, total);
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-zinc-100">
-            User Management
-          </h1>
-          <p className="text-sm text-zinc-500 mt-1">
-            {users.length} total users
+          <h1 className="text-2xl font-bold text-zinc-100">User Management</h1>
+          <p className="mt-1 text-sm text-zinc-500">
+            Manage teachers and students separately with optimized pagination.
           </p>
         </div>
 
-        <div className="relative">
+        <div className="relative w-full sm:w-72">
           <Search
             size={15}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none"
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"
           />
           <input
             type="text"
-            placeholder="Search users..."
+            placeholder={`Search ${activeRole}s...`}
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="rounded-2xl border border-white/10 bg-black/30 rounded-lg pl-9 pr-4 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-violet-500 transition-colors w-56"
+            onChange={(event) => setSearch(event.target.value)}
+            className="w-full rounded-2xl border border-white/10 bg-black/30 py-2.5 pl-9 pr-4 text-sm text-zinc-100 placeholder-zinc-500 transition-colors focus:border-violet-500 focus:outline-none"
           />
         </div>
       </div>
 
-      <div className="surface-card rounded-2xl overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="inline-flex rounded-2xl border border-white/10 bg-black/30 p-1">
+          <button
+            type="button"
+            onClick={() => handleTabChange("teacher")}
+            className={cn(
+              "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors",
+              activeRole === "teacher"
+                ? "bg-indigo-500/20 text-white shadow-sm"
+                : "text-zinc-400 hover:bg-white/5 hover:text-zinc-100",
+            )}
+          >
+            <GraduationCap size={16} />
+            Teachers
+          </button>
+          <button
+            type="button"
+            onClick={() => handleTabChange("student")}
+            className={cn(
+              "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors",
+              activeRole === "student"
+                ? "bg-indigo-500/20 text-white shadow-sm"
+                : "text-zinc-400 hover:bg-white/5 hover:text-zinc-100",
+            )}
+          >
+            <Users size={16} />
+            Students
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2 text-xs text-zinc-500">
+          <span>Rows per page</span>
+          <select
+            value={limit}
+            onChange={(event) => {
+              setLimit(Number(event.target.value));
+              setPage(1);
+            }}
+            className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-zinc-200 outline-none focus:border-violet-500"
+          >
+            {PAGE_SIZE_OPTIONS.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="surface-card overflow-hidden rounded-2xl">
+        <div className="border-b border-white/10 px-5 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-base font-semibold capitalize text-zinc-100">
+                {activeRole}s
+              </h2>
+              <p className="mt-1 text-xs text-zinc-500">
+                Showing {showingFrom}-{showingTo} of {total} {activeRole}s
+              </p>
+            </div>
+            {loading && <Spinner size="sm" />}
+          </div>
+        </div>
+
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full min-w-225">
             <thead>
               <tr className="border-b border-white/10">
-                <th className="text-left text-xs font-medium text-zinc-500 uppercase tracking-wider px-5 py-3">
+                <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500">
                   User
                 </th>
-                <th className="text-left text-xs font-medium text-zinc-500 uppercase tracking-wider px-5 py-3">
+                <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500">
                   Role
                 </th>
-                <th className="text-left text-xs font-medium text-zinc-500 uppercase tracking-wider px-5 py-3">
+                <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500">
                   Status
                 </th>
-                <th className="text-right text-xs font-medium text-zinc-500 uppercase tracking-wider px-5 py-3">
+                <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500">
+                  {activeRole === "teacher" ? "Courses" : "Progress"}
+                </th>
+                <th className="px-5 py-3 text-right text-xs font-medium uppercase tracking-wider text-zinc-500">
                   Actions
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-800/50">
-              {filtered.map((u) => (
-                <tr
-                  key={u.id}
-                  className="hover:bg-white/5 transition-colors"
-                >
-                  <td className="px-5 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full overflow-hidden bg-zinc-700 flex items-center justify-center shrink-0">
-                        {u.avatar_url ? (
-                          <Image
-                            src={u.avatar_url}
-                            alt={u.name}
-                            width={100}
-                            height={100}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <span className="text-xs font-bold text-zinc-300">
-                            {getInitials(u.name)}
-                          </span>
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-zinc-100">
-                          {u.name}
-                          {u.id === currentUser?.id && (
-                            <span className="ml-2 text-xs text-zinc-600">
-                              (you)
+              {!loading &&
+                users.map((user) => (
+                  <tr
+                    key={user.id}
+                    onClick={() => router.push(`/admin/users/${user.id}`)}
+                    className="cursor-pointer transition-colors hover:bg-white/5"
+                  >
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-700">
+                          {user.avatar_url ? (
+                            <Image
+                              src={user.avatar_url}
+                              alt={user.name}
+                              width={80}
+                              height={80}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-xs font-bold text-zinc-300">
+                              {getInitials(user.name)}
                             </span>
                           )}
-                        </p>
-                        <p className="text-xs text-zinc-500">{u.email}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-5 py-4">
-                    <Badge label={u.role} variant="role" />
-                  </td>
-                  <td className="px-5 py-4">
-                    <Badge
-                      label={u.is_active ? "active" : "inactive"}
-                      variant={u.is_active ? "success" : "danger"}
-                    />
-                  </td>
-                  <td className="px-5 py-4">
-                    <div className="flex items-center gap-2 justify-end">
-                      {u.id !== currentUser?.id && (
-                        <>
-                          {/* promote/demote */}
-                          {u.role === "student" && (
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              loading={actionLoading === u.id}
-                              onClick={() =>
-                                handleRoleChange(u.id, "teacher")
-                              }
-                            >
-                              <GraduationCap size={13} />
-                              Make Teacher
-                            </Button>
-                          )}
-                          {u.role === "teacher" && (
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              loading={actionLoading === u.id}
-                              onClick={() =>
-                                handleRoleChange(u.id, "student")
-                              }
-                            >
-                              Make Student
-                            </Button>
-                          )}
-
-                          {/* toggle active */}
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            loading={actionLoading === u.id}
-                            onClick={() => handleToggleActive(u.id)}
-                          >
-                            {u.is_active ? (
-                              <UserX size={14} className="text-orange-400" />
-                            ) : (
-                              <UserCheck
-                                size={14}
-                                className="text-green-400"
-                              />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-zinc-100">
+                            {user.name}
+                            {user.id === currentUser?.id && (
+                              <span className="ml-2 text-xs text-zinc-600">
+                                (you)
+                              </span>
                             )}
-                          </Button>
-
-                          {/* delete */}
-                          <Button
-                            size="sm"
-                            variant="danger"
-                            onClick={() => setDeleteModal(u)}
-                          >
-                            <Trash2 size={13} />
-                          </Button>
-                        </>
+                          </p>
+                          <p className="text-xs text-zinc-500">{user.email}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-4">
+                      <Badge label={user.role} variant="role" />
+                    </td>
+                    <td className="px-5 py-4">
+                      <Badge
+                        label={user.is_active ? "active" : "inactive"}
+                        variant={user.is_active ? "success" : "danger"}
+                      />
+                    </td>
+                    <td className="px-5 py-4">
+                      {activeRole === "teacher" ? (
+                        <div className="flex items-center gap-2 text-sm text-zinc-300">
+                          <BookOpen size={15} className="text-sky-300" />
+                          {user.total_courses ?? 0} created courses
+                        </div>
+                      ) : (
+                        <div className="min-w-52">
+                          <div className="mb-2 flex items-center justify-between text-xs">
+                            <span className="text-zinc-500">
+                              {user.total_enrolled_courses ?? 0} enrolled
+                            </span>
+                            <span className="font-semibold text-indigo-200">
+                              {Math.round(user.average_progress ?? 0)}%
+                            </span>
+                          </div>
+                          <div className="h-2 overflow-hidden rounded-full bg-slate-800/80 ring-1 ring-slate-700/50">
+                            <div
+                              className="h-full rounded-full bg-linear-to-r from-indigo-500 via-violet-500 to-sky-400 transition-all duration-500"
+                              style={{
+                                width: `${Math.min(
+                                  Math.max(user.average_progress ?? 0, 0),
+                                  100,
+                                )}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
                       )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td
+                      className="px-5 py-4"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <div className="flex items-center justify-end gap-2">
+                        {user.id !== currentUser?.id && (
+                          <>
+                            {user.role === "student" && (
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                loading={actionLoading === user.id}
+                                onClick={() =>
+                                  handleRoleChange(user.id, "teacher")
+                                }
+                              >
+                                <GraduationCap size={13} />
+                                Make Teacher
+                              </Button>
+                            )}
+                            {user.role === "teacher" && (
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                loading={actionLoading === user.id}
+                                onClick={() =>
+                                  handleRoleChange(user.id, "student")
+                                }
+                              >
+                                Make Student
+                              </Button>
+                            )}
+
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              loading={actionLoading === user.id}
+                              title={
+                                user.is_active
+                                  ? "Deactivate user"
+                                  : "Activate user"
+                              }
+                              onClick={() => handleToggleActive(user.id)}
+                            >
+                              {user.is_active ? (
+                                <UserX size={14} className="text-orange-400" />
+                              ) : (
+                                <UserCheck size={14} className="text-green-400" />
+                              )}
+                            </Button>
+
+                            {/* <Button
+                              size="sm"
+                              variant="danger"
+                              title="Deactivate user"
+                              onClick={() => setDeleteModal(user)}
+                            >
+                              <Trash2 size={13} />
+                            </Button> */}
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
             </tbody>
           </table>
 
-          {filtered.length === 0 && (
-            <div className="text-center py-12 text-zinc-500 text-sm">
-              No users found.
+          {!loading && users.length === 0 && (
+            <div className="px-6 py-14 text-center">
+              <p className="text-sm font-medium text-zinc-300">
+                No {activeRole}s found.
+              </p>
+              <p className="mt-1 text-xs text-zinc-500">
+                Try changing your search or switch to another tab.
+              </p>
+            </div>
+          )}
+
+          {loading && users.length === 0 && (
+            <div className="flex justify-center py-16">
+              <Spinner size="lg" />
             </div>
           )}
         </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 px-5 py-4">
+          <p className="text-xs text-zinc-500">
+            Page {page} of {totalPages}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={page <= 1 || loading}
+              onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+            >
+              <ChevronLeft size={15} />
+              Previous
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={page >= totalPages || loading}
+              onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
+            >
+              Next
+              <ChevronRight size={15} />
+            </Button>
+          </div>
+        </div>
       </div>
 
-      {/* delete confirm */}
       <Modal
         isOpen={!!deleteModal}
         onClose={() => setDeleteModal(null)}
-        title="Delete User"
+        title="Deactivate User"
         size="sm"
       >
-        <p className="text-sm text-zinc-400 mb-6">
-          Are you sure you want to permanently delete{" "}
-          <span className="text-zinc-100 font-medium">
-            {deleteModal?.name}
-          </span>
-          ? This action cannot be undone.
+        <p className="mb-6 text-sm text-zinc-400">
+          Are you sure you want to deactivate{" "}
+          <span className="font-medium text-zinc-100">{deleteModal?.name}</span>?
+          They will not be able to use the platform until reactivated.
         </p>
-        <div className="flex gap-3 justify-end">
-          <Button
-            variant="secondary"
-            onClick={() => setDeleteModal(null)}
-          >
+        <div className="flex justify-end gap-3">
+          <Button variant="secondary" onClick={() => setDeleteModal(null)}>
             Cancel
           </Button>
-          <Button
-            variant="danger"
-            loading={deleting}
-            onClick={handleDelete}
-          >
-            Delete User
+          <Button variant="danger" loading={deleting} onClick={handleDelete}>
+            Deactivate
           </Button>
         </div>
       </Modal>
