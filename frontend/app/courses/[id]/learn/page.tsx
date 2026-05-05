@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 import {
@@ -19,13 +19,36 @@ import { progressService } from "@/services/progress.service";
 import { assignmentService } from "@/services/assignment.service";
 import { useAuthStore } from "@/store/authStore";
 
-import { Lesson, CourseProgress, Assignment, Submission } from "@/types";
+import {
+  Lesson,
+  CourseProgress,
+  Assignment,
+  Submission,
+  VideoWatchProgress,
+} from "@/types";
 
 import { getErrorMessage, formatDateTime } from "@/lib/utils";
 
 import Button from "@/components/ui/Button";
 import ProgressBar from "@/components/ui/ProgressBar";
 import { FullPageSpinner } from "@/components/ui/Spinner";
+
+const VIDEO_COMPLETION_RATIO = 0.75;
+const WATCH_PING_INTERVAL_SECONDS = 5;
+
+function formatDuration(totalSeconds: number) {
+  const safeSeconds = Math.max(Math.ceil(totalSeconds), 0);
+  const minutes = Math.floor(safeSeconds / 60);
+  const seconds = safeSeconds % 60;
+
+  if (minutes <= 0) return `${seconds}s`;
+  return `${minutes}m ${seconds.toString().padStart(2, "0")}s`;
+}
+
+function getRequiredWatchSeconds(duration: number) {
+  if (!duration || duration <= 0) return 0;
+  return Math.round(duration * VIDEO_COMPLETION_RATIO);
+}
 
 export default function LearnPage() {
   const params = useParams<{ id: string }>();
@@ -58,6 +81,25 @@ export default function LearnPage() {
 
   const [view, setView] = useState<"lesson" | "assignment">("lesson");
 
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const watchIntervalRef = useRef<number | null>(null);
+  const pendingWatchSecondsRef = useRef(0);
+  const lastTickAtRef = useRef<number | null>(null);
+  const isSeekingRef = useRef(false);
+  const sendingWatchRef = useRef(false);
+  const lastSkipToastAtRef = useRef(0);
+
+  const currentLessonProgress = useMemo(
+    () =>
+      currentLesson
+        ? progress?.lessons.find((l) => l.lesson_id === currentLesson.id) ??
+          null
+        : null,
+    [currentLesson, progress],
+  );
+
+  const currentIndex = lessons.findIndex((l) => l.id === currentLesson?.id);
+
   const loadMySubmission = async (assignmentId: number) => {
     try {
       const sub = await assignmentService.getMySubmission(assignmentId);
@@ -66,6 +108,234 @@ export default function LearnPage() {
       setMySubmission(null);
     }
   };
+
+  const isCompleted = useCallback(
+    (lessonId: number) =>
+      progress?.lessons.find((l) => l.lesson_id === lessonId)?.completed ??
+      false,
+    [progress],
+  );
+
+  const applyWatchStatus = useCallback(
+    (lessonId: number, watch: Partial<VideoWatchProgress>) => {
+      setProgress((prev) => {
+        if (!prev) return prev;
+
+        return {
+          ...prev,
+          lessons: prev.lessons.map((lesson) => {
+            if (lesson.lesson_id !== lessonId) return lesson;
+
+            const watchedSeconds =
+              watch.watched_seconds ?? lesson.watched_seconds ?? 0;
+            const durationSeconds =
+              watch.video_duration_seconds ??
+              lesson.video_duration_seconds ??
+              0;
+            const requiredSeconds =
+              watch.required_watch_seconds ??
+              lesson.required_watch_seconds ??
+              getRequiredWatchSeconds(durationSeconds);
+            const watchPercentage =
+              watch.watch_percentage ??
+              (requiredSeconds > 0
+                ? Math.min((watchedSeconds / requiredSeconds) * 100, 100)
+                : 0);
+
+            return {
+              ...lesson,
+              watched_seconds: watchedSeconds,
+              video_duration_seconds: durationSeconds,
+              required_watch_seconds: requiredSeconds,
+              watch_percentage: Math.round(watchPercentage * 100) / 100,
+              can_mark_complete:
+                lesson.completed ||
+                !lesson.has_trackable_video ||
+                Boolean(watch.can_mark_complete) ||
+                (requiredSeconds > 0 && watchedSeconds >= requiredSeconds),
+            };
+          }),
+        };
+      });
+    },
+    [],
+  );
+
+  const addOptimisticWatchSeconds = useCallback(
+    (lessonId: number, seconds: number, duration: number) => {
+      if (seconds <= 0) return;
+
+      setProgress((prev) => {
+        if (!prev) return prev;
+
+        return {
+          ...prev,
+          lessons: prev.lessons.map((lesson) => {
+            if (lesson.lesson_id !== lessonId) return lesson;
+
+            const existingWatched = lesson.watched_seconds ?? 0;
+            const durationSeconds =
+              duration || lesson.video_duration_seconds || 0;
+            const watchedSeconds = durationSeconds
+              ? Math.min(existingWatched + seconds, durationSeconds)
+              : existingWatched + seconds;
+            const requiredSeconds =
+              lesson.required_watch_seconds ||
+              getRequiredWatchSeconds(durationSeconds);
+            const watchPercentage =
+              requiredSeconds > 0
+                ? Math.min((watchedSeconds / requiredSeconds) * 100, 100)
+                : 0;
+
+            return {
+              ...lesson,
+              watched_seconds: Math.round(watchedSeconds * 100) / 100,
+              video_duration_seconds: durationSeconds,
+              required_watch_seconds: requiredSeconds,
+              watch_percentage: Math.round(watchPercentage * 100) / 100,
+              can_mark_complete:
+                lesson.completed ||
+                (requiredSeconds > 0 && watchedSeconds >= requiredSeconds),
+            };
+          }),
+        };
+      });
+    },
+    [],
+  );
+
+  const flushWatchProgress = useCallback(
+    async (forceZeroPing = false) => {
+      if (!currentLesson?.video_url) return;
+      if (sendingWatchRef.current) return;
+
+      const video = videoRef.current;
+      const duration =
+        video?.duration && Number.isFinite(video.duration) ? video.duration : 0;
+      const currentPosition =
+        video?.currentTime && Number.isFinite(video.currentTime)
+          ? video.currentTime
+          : 0;
+      const pendingSeconds = pendingWatchSecondsRef.current;
+
+      if (!forceZeroPing && pendingSeconds <= 0) return;
+
+      pendingWatchSecondsRef.current = 0;
+      sendingWatchRef.current = true;
+
+      try {
+        const status = await progressService.trackVideoWatch(currentLesson.id, {
+          watched_seconds_delta: Math.round(pendingSeconds * 100) / 100,
+          video_duration_seconds: duration || undefined,
+          current_position_seconds: currentPosition || undefined,
+        });
+
+        applyWatchStatus(currentLesson.id, status);
+      } catch {
+        pendingWatchSecondsRef.current += pendingSeconds;
+      } finally {
+        sendingWatchRef.current = false;
+      }
+    },
+    [applyWatchStatus, currentLesson],
+  );
+
+  const stopWatchTimer = useCallback(() => {
+    if (watchIntervalRef.current !== null) {
+      window.clearInterval(watchIntervalRef.current);
+      watchIntervalRef.current = null;
+    }
+    lastTickAtRef.current = null;
+  }, []);
+
+  const tickWatchTimer = useCallback(() => {
+    const video = videoRef.current;
+
+    if (
+      !currentLesson?.video_url ||
+      !video ||
+      video.paused ||
+      video.ended ||
+      isSeekingRef.current ||
+      document.visibilityState !== "visible"
+    ) {
+      lastTickAtRef.current = Date.now();
+      return;
+    }
+
+    const now = Date.now();
+    const lastTickAt = lastTickAtRef.current ?? now;
+    const elapsedSeconds = Math.min((now - lastTickAt) / 1000, 1.5);
+    lastTickAtRef.current = now;
+
+    if (elapsedSeconds <= 0) return;
+
+    const duration =
+      video.duration && Number.isFinite(video.duration) ? video.duration : 0;
+
+    pendingWatchSecondsRef.current += elapsedSeconds;
+    addOptimisticWatchSeconds(currentLesson.id, elapsedSeconds, duration);
+
+    if (pendingWatchSecondsRef.current >= WATCH_PING_INTERVAL_SECONDS) {
+      void flushWatchProgress();
+    }
+  }, [addOptimisticWatchSeconds, currentLesson, flushWatchProgress]);
+
+  const startWatchTimer = useCallback(() => {
+    if (!currentLesson?.video_url) return;
+
+    lastTickAtRef.current = Date.now();
+
+    if (watchIntervalRef.current === null) {
+      watchIntervalRef.current = window.setInterval(tickWatchTimer, 1000);
+    }
+  }, [currentLesson, tickWatchTimer]);
+
+  const handleSelectLesson = useCallback(
+    (lesson: Lesson) => {
+      void flushWatchProgress();
+      stopWatchTimer();
+      pendingWatchSecondsRef.current = 0;
+      setCurrentLesson(lesson);
+      setView("lesson");
+    },
+    [flushWatchProgress, stopWatchTimer],
+  );
+
+  const handleVideoLoadedMetadata = useCallback(() => {
+    if (!currentLesson?.video_url) return;
+
+    const video = videoRef.current;
+    const duration =
+      video?.duration && Number.isFinite(video.duration) ? video.duration : 0;
+
+    if (duration > 0) {
+      applyWatchStatus(currentLesson.id, {
+        video_duration_seconds: duration,
+        required_watch_seconds: getRequiredWatchSeconds(duration),
+      });
+
+      void flushWatchProgress(true);
+    }
+  }, [applyWatchStatus, currentLesson, flushWatchProgress]);
+
+  const handleVideoSeeking = useCallback(() => {
+    isSeekingRef.current = true;
+    lastTickAtRef.current = Date.now();
+
+    const now = Date.now();
+    if (now - lastSkipToastAtRef.current > 4000) {
+      toast("Skipping does not count as watch time.", {
+        icon: "⏱️",
+      });
+      lastSkipToastAtRef.current = now;
+    }
+  }, []);
+
+  const handleVideoSeeked = useCallback(() => {
+    isSeekingRef.current = false;
+    lastTickAtRef.current = Date.now();
+  }, []);
 
   useEffect(() => {
     if (!hasHydrated) return;
@@ -119,11 +389,85 @@ export default function LearnPage() {
     initialLessonId,
   ]);
 
-  const isCompleted = (lessonId: number) =>
-    progress?.lessons.find((l) => l.lesson_id === lessonId)?.completed ?? false;
+  useEffect(() => {
+    pendingWatchSecondsRef.current = 0;
+    isSeekingRef.current = false;
+    lastTickAtRef.current = null;
+    stopWatchTimer();
+
+    return () => {
+      void flushWatchProgress();
+      stopWatchTimer();
+    };
+  }, [currentLesson?.id, flushWatchProgress, stopWatchTimer]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== "visible") {
+        void flushWatchProgress();
+        stopWatchTimer();
+      } else if (videoRef.current && !videoRef.current.paused) {
+        startWatchTimer();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [flushWatchProgress, startWatchTimer, stopWatchTimer]);
+
+  const watchRequiredSeconds =
+    currentLessonProgress?.required_watch_seconds ?? 0;
+  const watchedSeconds = currentLessonProgress?.watched_seconds ?? 0;
+  const watchPercentage =
+    watchRequiredSeconds > 0
+      ? Math.min((watchedSeconds / watchRequiredSeconds) * 100, 100)
+      : currentLessonProgress?.watch_percentage ?? 0;
+  const remainingWatchSeconds = Math.max(
+    watchRequiredSeconds - watchedSeconds,
+    0,
+  );
+  const hasTrackableVideo = Boolean(currentLesson?.video_url);
+  const currentLessonCompleted = currentLesson
+    ? isCompleted(currentLesson.id)
+    : false;
+  const canMarkCurrentLessonComplete =
+    currentLessonCompleted ||
+    !hasTrackableVideo ||
+    (watchRequiredSeconds > 0 && watchedSeconds >= watchRequiredSeconds);
+  const markCompleteLocked =
+    Boolean(currentLesson) &&
+    hasTrackableVideo &&
+    !currentLessonCompleted &&
+    !canMarkCurrentLessonComplete;
+
+  const getLockedCompleteMessage = () => {
+    if (!currentLesson?.video_url) return "";
+
+    if (watchRequiredSeconds <= 0) {
+      return "Please start the video first. You can mark complete after enough watch time is recorded.";
+    }
+
+    return `You are required to watch at least ${formatDuration(
+      watchRequiredSeconds,
+    )} of this video. Watch ${formatDuration(
+      remainingWatchSeconds,
+    )} more before marking it complete.`;
+  };
 
   const handleMarkComplete = async () => {
     if (!currentLesson) return;
+
+    if (!isCompleted(currentLesson.id)) {
+      await flushWatchProgress();
+
+      if (markCompleteLocked) {
+        toast.error(getLockedCompleteMessage());
+        return;
+      }
+    }
 
     setMarkingDone(true);
 
@@ -168,8 +512,6 @@ export default function LearnPage() {
     }
   };
 
-  const currentIndex = lessons.findIndex((l) => l.id === currentLesson?.id);
-
   if (loading) return <FullPageSpinner />;
 
   return (
@@ -200,10 +542,7 @@ export default function LearnPage() {
             {lessons.map((lesson) => (
               <button
                 key={lesson.id}
-                onClick={() => {
-                  setCurrentLesson(lesson);
-                  setView("lesson");
-                }}
+                onClick={() => handleSelectLesson(lesson)}
                 className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/5 transition-colors border-b border-white/10/50 last:border-0 cursor-pointer ${
                   currentLesson?.id === lesson.id && view === "lesson"
                     ? "bg-violet-500/10"
@@ -235,6 +574,8 @@ export default function LearnPage() {
               <button
                 key={a.id}
                 onClick={() => {
+                  void flushWatchProgress();
+                  stopWatchTimer();
                   setActiveAssignment(a);
                   setView("assignment");
                   loadMySubmission(a.id);
@@ -278,43 +619,97 @@ export default function LearnPage() {
                   )}
                 </div>
 
-                <Button
-                  size="sm"
-                  variant={
-                    isCompleted(currentLesson.id) ? "secondary" : "primary"
-                  }
-                  onClick={handleMarkComplete}
-                  loading={markingDone}
-                >
-                  {isCompleted(currentLesson.id) ? (
-                    <>
-                      <CheckCircle size={14} />
-                      Completed
-                    </>
-                  ) : (
-                    <>
-                      <Circle size={14} />
-                      Mark Complete
-                    </>
+                <div className="flex flex-col items-end gap-2">
+                  <Button
+                    size="sm"
+                    variant={
+                      isCompleted(currentLesson.id) ? "secondary" : "primary"
+                    }
+                    onClick={handleMarkComplete}
+                    loading={markingDone}
+                    aria-disabled={markCompleteLocked}
+                    className={markCompleteLocked ? "opacity-55" : undefined}
+                  >
+                    {isCompleted(currentLesson.id) ? (
+                      <>
+                        <CheckCircle size={14} />
+                        Completed
+                      </>
+                    ) : (
+                      <>
+                        <Circle size={14} />
+                        Mark Complete
+                      </>
+                    )}
+                  </Button>
+
+                  {markCompleteLocked && (
+                    <p className="max-w-48 text-right text-[11px] leading-4 text-amber-300/90">
+                      {watchRequiredSeconds > 0
+                        ? `${formatDuration(remainingWatchSeconds)} more required`
+                        : "Start video to unlock"}
+                    </p>
                   )}
-                </Button>
+                </div>
               </div>
 
               {/* Uploaded Video */}
               {currentLesson.video_url && (
-                <div className="mb-4">
+                <div className="mb-4 space-y-3">
                   <video
+                    ref={videoRef}
                     src={currentLesson.video_url}
                     controls
+                    onLoadedMetadata={handleVideoLoadedMetadata}
+                    onPlay={startWatchTimer}
+                    onPause={() => {
+                      void flushWatchProgress();
+                      stopWatchTimer();
+                    }}
+                    onEnded={() => {
+                      void flushWatchProgress();
+                      stopWatchTimer();
+                    }}
+                    onSeeking={handleVideoSeeking}
+                    onSeeked={handleVideoSeeked}
                     className="w-full rounded-xl max-h-115 bg-black"
                   />
+
+                  {!currentLessonCompleted && (
+                    <div className="rounded-xl border border-amber-400/20 bg-amber-500/10 p-3">
+                      <div className="flex items-center justify-between gap-3 text-xs text-amber-100">
+                        <span>
+                          Video watch requirement: {Math.round(watchPercentage)}%
+                        </span>
+                        <span>
+                          {formatDuration(watchedSeconds)} /{" "}
+                          {watchRequiredSeconds > 0
+                            ? formatDuration(watchRequiredSeconds)
+                            : "detecting..."}
+                        </span>
+                      </div>
+
+                      <div className="mt-2 h-2 overflow-hidden rounded-full bg-black/30">
+                        <div
+                          className="h-full rounded-full bg-amber-300 transition-all"
+                          style={{ width: `${Math.min(watchPercentage, 100)}%` }}
+                        />
+                      </div>
+
+                      <p className="mt-2 text-xs leading-relaxed text-amber-100/70">
+                        You need to watch at least 75% of the uploaded video before
+                        marking this lesson complete. Skipping forward will not count
+                        as watch time.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* External Video */}
               {!currentLesson.video_url &&
                 currentLesson.external_video_link && (
-                  <div className="mb-4">
+                  <div className="mb-4 space-y-3">
                     <div className="aspect-video w-full bg-zinc-800 rounded-xl overflow-hidden">
                       <iframe
                         src={currentLesson.external_video_link.replace(
@@ -325,6 +720,12 @@ export default function LearnPage() {
                         allowFullScreen
                       />
                     </div>
+
+                    <p className="rounded-xl border border-blue-400/15 bg-blue-500/10 px-3 py-2 text-xs text-blue-200/80">
+                      External video embeds cannot always expose exact watch time to
+                      the browser. Exact anti-skip tracking is enforced for uploaded
+                      video lessons.
+                    </p>
                   </div>
                 )}
 
@@ -362,7 +763,7 @@ export default function LearnPage() {
               <Button
                 variant="secondary"
                 disabled={currentIndex === 0}
-                onClick={() => setCurrentLesson(lessons[currentIndex - 1])}
+                onClick={() => handleSelectLesson(lessons[currentIndex - 1])}
               >
                 <ChevronLeft size={16} />
                 Previous
@@ -371,7 +772,7 @@ export default function LearnPage() {
               <Button
                 variant="secondary"
                 disabled={currentIndex === lessons.length - 1}
-                onClick={() => setCurrentLesson(lessons[currentIndex + 1])}
+                onClick={() => handleSelectLesson(lessons[currentIndex + 1])}
               >
                 Next
                 <ChevronRight size={16} />
@@ -381,7 +782,7 @@ export default function LearnPage() {
         )}
 
         {view === "assignment" && activeAssignment && (
-          <div className="surface-card rounded-[2rem] p-6 space-y-5">
+          <div className="surface-card rounded-4xl p-6 space-y-5">
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <ClipboardList size={18} className="text-orange-400" />

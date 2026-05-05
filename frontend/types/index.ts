@@ -67,6 +67,21 @@ export interface LessonProgressItem {
   order: number;
   completed: boolean;
   completed_at: string | null;
+  has_video?: boolean;
+  has_trackable_video?: boolean;
+  watched_seconds?: number;
+  video_duration_seconds?: number;
+  required_watch_seconds?: number;
+  watch_percentage?: number;
+  can_mark_complete?: boolean;
+}
+
+export interface VideoWatchProgress {
+  watched_seconds: number;
+  video_duration_seconds: number;
+  required_watch_seconds: number;
+  watch_percentage: number;
+  can_mark_complete: boolean;
 }
 
 export interface CourseProgress {

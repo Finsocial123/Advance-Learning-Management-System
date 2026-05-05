@@ -229,7 +229,7 @@ export default function AdminUsersPage() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px]">
+          <table className="w-full min-w-225">
             <thead>
               <tr className="border-b border-white/10">
                 <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500">
