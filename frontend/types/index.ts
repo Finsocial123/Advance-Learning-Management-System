@@ -217,11 +217,42 @@ export interface StudentDashboardData {
 }
 
 export interface EnrolledStudent {
+  enrollment_id?: number;
   student_id: number;
   student_name: string;
   student_email: string;
   progress: number;
+  total_lessons?: number;
+  completed_lessons?: number;
+  pending_lessons?: number;
   enrolled_at: string;
+  lessons?: CourseStudentLessonProgress[];
+}
+
+export interface CourseStudentLessonProgress {
+  lesson_id: number;
+  title: string;
+  order: number;
+  completed: boolean;
+  completed_at: string | null;
+  has_video: boolean;
+  watched_seconds: number;
+  video_duration_seconds: number;
+}
+
+export interface CourseStudentProgressReport extends EnrolledStudent {
+  enrollment_id: number;
+  total_lessons: number;
+  completed_lessons: number;
+  pending_lessons: number;
+  lessons: CourseStudentLessonProgress[];
+}
+
+export interface CourseStudentsProgressResponse {
+  course: Course;
+  total_students: number;
+  average_progress: number;
+  students: CourseStudentProgressReport[];
 }
 
 export interface TokenResponse {
