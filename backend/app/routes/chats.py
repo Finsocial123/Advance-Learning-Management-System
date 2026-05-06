@@ -205,7 +205,8 @@ async def send_message_stream(
                         token = chunk.choices[0].delta.content
                         if token:
                             full_response.append(token)
-                            yield f"{token}"
+                            yield f"data: {json.dumps({'token': token})}\n\n"
+                            # yield f"{token}"
 
                     final_assistant_msg = ChatMessage(
                         session_id=session_id,
@@ -225,6 +226,8 @@ async def send_message_stream(
 
                     await gen_db.commit()
 
+                    yield f"data: {json.dumps({'status': 'done'})}\n\n"
+                    # yield f"{token}"
                 else:
                     stream = await client.chat.completions.create(
                         model=request.model,
@@ -236,7 +239,8 @@ async def send_message_stream(
                         token = chunk.choices[0].delta.content
                         if token:
                             full_response.append(token)
-                            yield f"{token}"
+                            yield f"data: {json.dumps({'token': token})}\n\n"
+                            # yield f"{token}"
 
                     final_assistant_msg = ChatMessage(
                         session_id=session_id,

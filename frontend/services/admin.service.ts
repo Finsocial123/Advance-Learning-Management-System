@@ -1,8 +1,32 @@
 import api from "@/lib/axios";
-import { User } from "@/types";
+import {
+  AdminUserDetails,
+  PaginatedUsersResponse,
+  Role,
+  User,
+} from "@/types";
 
 export const adminService = {
-  async updateRole(userId: number, role: string) {
+  async getPaginatedUsers(params: {
+    role: "teacher" | "student";
+    search?: string;
+    page?: number;
+    limit?: number;
+  }) {
+    const res = await api.get<PaginatedUsersResponse>("/admin/users", {
+      params,
+    });
+    return res.data;
+  },
+
+  async getUserDetails(userId: number) {
+    const res = await api.get<AdminUserDetails>(
+      `/admin/users/${userId}/details`,
+    );
+    return res.data;
+  },
+
+  async updateRole(userId: number, role: Role) {
     const res = await api.put<User>(`/admin/users/${userId}/role`, {
       role,
     });
@@ -16,7 +40,7 @@ export const adminService = {
 
   async toggleActive(userId: number) {
     const res = await api.put<User>(
-      `/admin/users/${userId}/toggle-active`
+      `/admin/users/${userId}/toggle-active`,
     );
     return res.data;
   },

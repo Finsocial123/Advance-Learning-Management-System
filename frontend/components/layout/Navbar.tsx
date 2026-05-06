@@ -14,7 +14,7 @@ export default function Navbar() {
   const { user, isAuthenticated } = useAuth();
   const logout = useAuthStore((state) => state.logout);
   const router = useRouter();
-  const pathname = usePathname();
+  const pathname = usePathname();``
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleLogout = () => {
