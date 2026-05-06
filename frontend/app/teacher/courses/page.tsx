@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import toast from "react-hot-toast";
-import { BookOpen, Edit, Eye, Plus, Trash2 } from "lucide-react";
+import { BookOpen, Edit, Eye, Plus, Trash2, Users } from "lucide-react";
 import { courseService } from "@/services/course.service";
 import { Course } from "@/types";
 import { useRoleGuard } from "@/hooks/useRoleGuard";
@@ -106,6 +106,9 @@ export default function TeacherCoursesPage() {
               <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                 <Button size="sm" variant="ghost" onClick={() => router.push(`/courses/${course.id}`)}>
                   <Eye size={14} />
+                </Button>
+                <Button size="sm" variant="secondary" onClick={() => router.push(`/teacher/courses/${course.id}/students`)}>
+                  <Users size={14} /> Students
                 </Button>
                 <Button size="sm" variant="secondary" onClick={() => router.push(`/teacher/courses/${course.id}/lessons/create`)}>
                   <Plus size={14} /> Lesson
