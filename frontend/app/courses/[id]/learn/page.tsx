@@ -42,6 +42,10 @@ import ProgressBar from "@/components/ui/ProgressBar";
 import { FullPageSpinner } from "@/components/ui/Spinner";
 import { API_URL } from "@/lib/api";
 
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeSanitize from "rehype-sanitize";
+
 const VIDEO_COMPLETION_RATIO = 0.75;
 const WATCH_PING_INTERVAL_SECONDS = 5;
 
@@ -67,6 +71,52 @@ function getRequiredWatchSeconds(duration: number) {
   return Math.round(duration * VIDEO_COMPLETION_RATIO);
 }
 
+// ---Markdown support for chatpanel---
+
+const MessageContent = ({
+  role,
+  content,
+}: {
+  role: "user" | "assistant";
+  content: string;
+}) => {
+  if (role === "user") {
+    return <>{content}</>;
+  }
+
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      rehypePlugins={[rehypeSanitize]}
+      components={{
+        // Optional: customise elements
+        pre: ({ children }) => (
+          <pre className="bg-black/20 rounded-lg p-3 my-2 overflow-x-auto">
+            {children}
+          </pre>
+        ),
+        code: ({ className, children, ...props }) => {
+          const isInline = !className;
+          return isInline ? (
+            <code
+              className="bg-white/10 px-1 py-0.5 rounded text-sm"
+              {...props}
+            >
+              {children}
+            </code>
+          ) : (
+            <code className={className} {...props}>
+              {children}
+            </code>
+          );
+        },
+      }}
+    >
+      {content}
+    </ReactMarkdown>
+  );
+};
+
 // ─── ChatPanel ────────────────────────────────────────────────────────────────
 function ChatPanel({
   lessonId,
@@ -80,13 +130,28 @@ function ChatPanel({
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!lessonId) return;
+    const createSession = async () => {
+      const res = await fetch(`${API_URL}/sessions/${userId}/sessions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId, lesson_id: lessonId }),
+      });
+      const { id } = await res.json();
+      setSessionId(id);
+    };
+    createSession();
+  }, [lessonId, userId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   const sendMessage = async () => {
-    console.log("user id",userId)
+    console.log("user id", userId);
     if (!input.trim() || loading) return;
 
     const userMsg: ChatMessage = {
@@ -105,12 +170,11 @@ function ChatPanel({
         user_id: userId,
         model: "openrouter/free",
         content: userMsg.content,
-        lesson_id: lessonId ,
+        lesson_id: lessonId,
       };
-      console.log(payload)
+      console.log(payload);
 
-
-      const res = await fetch(`${API_URL}/sessions/9f76fbe7-65a2-4c5c-8ac8-77c8356dd6da/messages`, {
+      const res = await fetch(`${API_URL}/sessions/${sessionId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -119,7 +183,7 @@ function ChatPanel({
       if (!res.ok) throw new Error("Chat request failed");
 
       const data = await res.text();
-      console.log(data)
+      console.log(data);
 
       const assistantMsg: ChatMessage = {
         id: crypto.randomUUID(),
@@ -206,7 +270,8 @@ function ChatPanel({
                   : "bg-white/5 border border-white/8 text-zinc-300 rounded-tl-sm"
               }`}
             >
-              {msg.content}
+              <MessageContent role={msg.role} content={msg.content} />
+              {/* {msg.content} */}
             </div>
           </div>
         ))}
@@ -275,7 +340,9 @@ export default function LearnPage() {
   const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
 
   const [assignments, setAssignments] = useState<Assignment[]>([]);
-  const [activeAssignment, setActiveAssignment] = useState<Assignment | null>(null);
+  const [activeAssignment, setActiveAssignment] = useState<Assignment | null>(
+    null,
+  );
 
   const [mySubmission, setMySubmission] = useState<Submission | null>(null);
   const [submitFile, setSubmitFile] = useState<File | null>(null);
@@ -286,7 +353,9 @@ export default function LearnPage() {
 
   const [view, setView] = useState<"lesson" | "assignment">("lesson");
   const [chatOpen, setChatOpen] = useState(true);
-  const [sidebarTab, setSidebarTab] = useState<"lessons" | "assignments">("lessons");
+  const [sidebarTab, setSidebarTab] = useState<"lessons" | "assignments">(
+    "lessons",
+  );
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const watchIntervalRef = useRef<number | null>(null);
@@ -299,7 +368,8 @@ export default function LearnPage() {
   const currentLessonProgress = useMemo(
     () =>
       currentLesson
-        ? progress?.lessons.find((l) => l.lesson_id === currentLesson.id) ?? null
+        ? (progress?.lessons.find((l) => l.lesson_id === currentLesson.id) ??
+          null)
         : null,
     [currentLesson, progress],
   );
@@ -317,7 +387,8 @@ export default function LearnPage() {
 
   const isCompleted = useCallback(
     (lessonId: number) =>
-      progress?.lessons.find((l) => l.lesson_id === lessonId)?.completed ?? false,
+      progress?.lessons.find((l) => l.lesson_id === lessonId)?.completed ??
+      false,
     [progress],
   );
 
@@ -329,10 +400,21 @@ export default function LearnPage() {
           ...prev,
           lessons: prev.lessons.map((lesson) => {
             if (lesson.lesson_id !== lessonId) return lesson;
-            const watchedSeconds = watch.watched_seconds ?? lesson.watched_seconds ?? 0;
-            const durationSeconds = watch.video_duration_seconds ?? lesson.video_duration_seconds ?? 0;
-            const requiredSeconds = watch.required_watch_seconds ?? lesson.required_watch_seconds ?? getRequiredWatchSeconds(durationSeconds);
-            const watchPercentage = watch.watch_percentage ?? (requiredSeconds > 0 ? Math.min((watchedSeconds / requiredSeconds) * 100, 100) : 0);
+            const watchedSeconds =
+              watch.watched_seconds ?? lesson.watched_seconds ?? 0;
+            const durationSeconds =
+              watch.video_duration_seconds ??
+              lesson.video_duration_seconds ??
+              0;
+            const requiredSeconds =
+              watch.required_watch_seconds ??
+              lesson.required_watch_seconds ??
+              getRequiredWatchSeconds(durationSeconds);
+            const watchPercentage =
+              watch.watch_percentage ??
+              (requiredSeconds > 0
+                ? Math.min((watchedSeconds / requiredSeconds) * 100, 100)
+                : 0);
             return {
               ...lesson,
               watched_seconds: watchedSeconds,
@@ -362,19 +444,27 @@ export default function LearnPage() {
           lessons: prev.lessons.map((lesson) => {
             if (lesson.lesson_id !== lessonId) return lesson;
             const existingWatched = lesson.watched_seconds ?? 0;
-            const durationSeconds = duration || lesson.video_duration_seconds || 0;
+            const durationSeconds =
+              duration || lesson.video_duration_seconds || 0;
             const watchedSeconds = durationSeconds
               ? Math.min(existingWatched + seconds, durationSeconds)
               : existingWatched + seconds;
-            const requiredSeconds = lesson.required_watch_seconds || getRequiredWatchSeconds(durationSeconds);
-            const watchPercentage = requiredSeconds > 0 ? Math.min((watchedSeconds / requiredSeconds) * 100, 100) : 0;
+            const requiredSeconds =
+              lesson.required_watch_seconds ||
+              getRequiredWatchSeconds(durationSeconds);
+            const watchPercentage =
+              requiredSeconds > 0
+                ? Math.min((watchedSeconds / requiredSeconds) * 100, 100)
+                : 0;
             return {
               ...lesson,
               watched_seconds: Math.round(watchedSeconds * 100) / 100,
               video_duration_seconds: durationSeconds,
               required_watch_seconds: requiredSeconds,
               watch_percentage: Math.round(watchPercentage * 100) / 100,
-              can_mark_complete: lesson.completed || (requiredSeconds > 0 && watchedSeconds >= requiredSeconds),
+              can_mark_complete:
+                lesson.completed ||
+                (requiredSeconds > 0 && watchedSeconds >= requiredSeconds),
             };
           }),
         };
@@ -388,8 +478,12 @@ export default function LearnPage() {
       if (!currentLesson?.video_url) return;
       if (sendingWatchRef.current) return;
       const video = videoRef.current;
-      const duration = video?.duration && Number.isFinite(video.duration) ? video.duration : 0;
-      const currentPosition = video?.currentTime && Number.isFinite(video.currentTime) ? video.currentTime : 0;
+      const duration =
+        video?.duration && Number.isFinite(video.duration) ? video.duration : 0;
+      const currentPosition =
+        video?.currentTime && Number.isFinite(video.currentTime)
+          ? video.currentTime
+          : 0;
       const pendingSeconds = pendingWatchSecondsRef.current;
       if (!forceZeroPing && pendingSeconds <= 0) return;
       pendingWatchSecondsRef.current = 0;
@@ -420,7 +514,14 @@ export default function LearnPage() {
 
   const tickWatchTimer = useCallback(() => {
     const video = videoRef.current;
-    if (!currentLesson?.video_url || !video || video.paused || video.ended || isSeekingRef.current || document.visibilityState !== "visible") {
+    if (
+      !currentLesson?.video_url ||
+      !video ||
+      video.paused ||
+      video.ended ||
+      isSeekingRef.current ||
+      document.visibilityState !== "visible"
+    ) {
       lastTickAtRef.current = Date.now();
       return;
     }
@@ -429,7 +530,8 @@ export default function LearnPage() {
     const elapsedSeconds = Math.min((now - lastTickAt) / 1000, 1.5);
     lastTickAtRef.current = now;
     if (elapsedSeconds <= 0) return;
-    const duration = video.duration && Number.isFinite(video.duration) ? video.duration : 0;
+    const duration =
+      video.duration && Number.isFinite(video.duration) ? video.duration : 0;
     pendingWatchSecondsRef.current += elapsedSeconds;
     addOptimisticWatchSeconds(currentLesson.id, elapsedSeconds, duration);
     if (pendingWatchSecondsRef.current >= WATCH_PING_INTERVAL_SECONDS) {
@@ -459,7 +561,8 @@ export default function LearnPage() {
   const handleVideoLoadedMetadata = useCallback(() => {
     if (!currentLesson?.video_url) return;
     const video = videoRef.current;
-    const duration = video?.duration && Number.isFinite(video.duration) ? video.duration : 0;
+    const duration =
+      video?.duration && Number.isFinite(video.duration) ? video.duration : 0;
     if (duration > 0) {
       applyWatchStatus(currentLesson.id, {
         video_duration_seconds: duration,
@@ -521,7 +624,14 @@ export default function LearnPage() {
       }
     };
     load();
-  }, [hasHydrated, courseId, isAuthenticated, router, initialAssignmentId, initialLessonId]);
+  }, [
+    hasHydrated,
+    courseId,
+    isAuthenticated,
+    router,
+    initialAssignmentId,
+    initialLessonId,
+  ]);
 
   useEffect(() => {
     pendingWatchSecondsRef.current = 0;
@@ -544,23 +654,34 @@ export default function LearnPage() {
       }
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [flushWatchProgress, startWatchTimer, stopWatchTimer]);
 
-  const watchRequiredSeconds = currentLessonProgress?.required_watch_seconds ?? 0;
+  const watchRequiredSeconds =
+    currentLessonProgress?.required_watch_seconds ?? 0;
   const watchedSeconds = currentLessonProgress?.watched_seconds ?? 0;
-  const watchPercentage = watchRequiredSeconds > 0
-    ? Math.min((watchedSeconds / watchRequiredSeconds) * 100, 100)
-    : currentLessonProgress?.watch_percentage ?? 0;
-  const remainingWatchSeconds = Math.max(watchRequiredSeconds - watchedSeconds, 0);
+  const watchPercentage =
+    watchRequiredSeconds > 0
+      ? Math.min((watchedSeconds / watchRequiredSeconds) * 100, 100)
+      : (currentLessonProgress?.watch_percentage ?? 0);
+  const remainingWatchSeconds = Math.max(
+    watchRequiredSeconds - watchedSeconds,
+    0,
+  );
   const hasTrackableVideo = Boolean(currentLesson?.video_url);
-  const currentLessonCompleted = currentLesson ? isCompleted(currentLesson.id) : false;
+  const currentLessonCompleted = currentLesson
+    ? isCompleted(currentLesson.id)
+    : false;
   const canMarkCurrentLessonComplete =
     currentLessonCompleted ||
     !hasTrackableVideo ||
     (watchRequiredSeconds > 0 && watchedSeconds >= watchRequiredSeconds);
   const markCompleteLocked =
-    Boolean(currentLesson) && hasTrackableVideo && !currentLessonCompleted && !canMarkCurrentLessonComplete;
+    Boolean(currentLesson) &&
+    hasTrackableVideo &&
+    !currentLessonCompleted &&
+    !canMarkCurrentLessonComplete;
 
   const getLockedCompleteMessage = () => {
     if (!currentLesson?.video_url) return "";
@@ -599,7 +720,10 @@ export default function LearnPage() {
     if (!activeAssignment) return;
     setSubmitting(true);
     try {
-      await assignmentService.submit(activeAssignment.id, submitFile || undefined);
+      await assignmentService.submit(
+        activeAssignment.id,
+        submitFile || undefined,
+      );
       toast.success("Assignment submitted!");
       loadMySubmission(activeAssignment.id);
       setSubmitFile(null);
@@ -618,7 +742,6 @@ export default function LearnPage() {
 
   return (
     <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
-
       {/* ── Left Sidebar ── */}
       <aside className="hidden lg:flex flex-col w-64 xl:w-72 shrink-0 border-r border-white/8 bg-zinc-950/50 overflow-hidden">
         {/* Progress header */}
@@ -637,7 +760,9 @@ export default function LearnPage() {
               style={{ width: `${overallProgress}%` }}
             />
           </div>
-          <p className="text-xs text-zinc-600 mt-1">{Math.round(overallProgress)}% complete</p>
+          <p className="text-xs text-zinc-600 mt-1">
+            {Math.round(overallProgress)}% complete
+          </p>
         </div>
 
         {/* Tab switcher */}
@@ -678,7 +803,8 @@ export default function LearnPage() {
           {sidebarTab === "lessons" &&
             lessons.map((lesson, idx) => {
               const done = isCompleted(lesson.id);
-              const active = currentLesson?.id === lesson.id && view === "lesson";
+              const active =
+                currentLesson?.id === lesson.id && view === "lesson";
               return (
                 <button
                   key={lesson.id}
@@ -693,18 +819,26 @@ export default function LearnPage() {
                     ) : (
                       <div
                         className={`w-3.5 h-3.5 rounded-full border-2 ${
-                          active ? "border-violet-400" : "border-zinc-600 group-hover:border-zinc-400"
+                          active
+                            ? "border-violet-400"
+                            : "border-zinc-600 group-hover:border-zinc-400"
                         }`}
                       />
                     )}
                   </div>
                   <div className="min-w-0">
-                    <p className={`text-xs font-mono mb-0.5 ${active ? "text-violet-400" : "text-zinc-600"}`}>
+                    <p
+                      className={`text-xs font-mono mb-0.5 ${active ? "text-violet-400" : "text-zinc-600"}`}
+                    >
                       {String(idx + 1).padStart(2, "0")}
                     </p>
                     <p
                       className={`text-sm leading-snug line-clamp-2 ${
-                        active ? "text-zinc-100" : done ? "text-zinc-400" : "text-zinc-300"
+                        active
+                          ? "text-zinc-100"
+                          : done
+                            ? "text-zinc-400"
+                            : "text-zinc-300"
                       }`}
                     >
                       {lesson.title}
@@ -716,7 +850,8 @@ export default function LearnPage() {
 
           {sidebarTab === "assignments" &&
             assignments.map((a) => {
-              const active = activeAssignment?.id === a.id && view === "assignment";
+              const active =
+                activeAssignment?.id === a.id && view === "assignment";
               return (
                 <button
                   key={a.id}
@@ -731,8 +866,13 @@ export default function LearnPage() {
                     active ? "bg-orange-500/10" : "hover:bg-white/4"
                   }`}
                 >
-                  <ClipboardList size={14} className="text-orange-400 shrink-0 mt-0.5" />
-                  <span className={`text-sm line-clamp-2 ${active ? "text-zinc-100" : "text-zinc-300"}`}>
+                  <ClipboardList
+                    size={14}
+                    className="text-orange-400 shrink-0 mt-0.5"
+                  />
+                  <span
+                    className={`text-sm line-clamp-2 ${active ? "text-zinc-100" : "text-zinc-300"}`}
+                  >
                     {a.title}
                   </span>
                 </button>
@@ -746,7 +886,6 @@ export default function LearnPage() {
         {/* Content area */}
         <div className="flex-1 overflow-y-auto scrollbar-thin">
           <div className="max-w-4xl mx-auto px-4 lg:px-8 py-6 space-y-5">
-
             {view === "lesson" && currentLesson && (
               <>
                 {/* Top bar */}
@@ -754,13 +893,17 @@ export default function LearnPage() {
                   <div className="flex items-center gap-2 text-xs text-zinc-500 font-mono">
                     <span>Lesson</span>
                     <span className="text-zinc-600">/</span>
-                    <span className="text-zinc-300">{currentIndex + 1} of {lessons.length}</span>
+                    <span className="text-zinc-300">
+                      {currentIndex + 1} of {lessons.length}
+                    </span>
                   </div>
 
                   <div className="flex items-center gap-2">
                     <Button
                       size="sm"
-                      variant={isCompleted(currentLesson.id) ? "secondary" : "primary"}
+                      variant={
+                        isCompleted(currentLesson.id) ? "secondary" : "primary"
+                      }
                       onClick={handleMarkComplete}
                       loading={markingDone}
                       aria-disabled={markCompleteLocked}
@@ -793,7 +936,10 @@ export default function LearnPage() {
                   )}
                   {markCompleteLocked && (
                     <p className="text-xs text-amber-300/80 mt-2">
-                      ⏱ {watchRequiredSeconds > 0 ? `${formatDuration(remainingWatchSeconds)} watch time remaining` : "Start video to unlock"}
+                      ⏱{" "}
+                      {watchRequiredSeconds > 0
+                        ? `${formatDuration(remainingWatchSeconds)} watch time remaining`
+                        : "Start video to unlock"}
                     </p>
                   )}
                 </div>
@@ -808,8 +954,14 @@ export default function LearnPage() {
                         controls
                         onLoadedMetadata={handleVideoLoadedMetadata}
                         onPlay={startWatchTimer}
-                        onPause={() => { void flushWatchProgress(); stopWatchTimer(); }}
-                        onEnded={() => { void flushWatchProgress(); stopWatchTimer(); }}
+                        onPause={() => {
+                          void flushWatchProgress();
+                          stopWatchTimer();
+                        }}
+                        onEnded={() => {
+                          void flushWatchProgress();
+                          stopWatchTimer();
+                        }}
                         onSeeking={handleVideoSeeking}
                         onSeeked={handleVideoSeeked}
                         className="w-full max-h-[460px]"
@@ -819,19 +971,27 @@ export default function LearnPage() {
                     {!currentLessonCompleted && (
                       <div className="rounded-xl border border-amber-400/15 bg-amber-500/8 p-3">
                         <div className="flex items-center justify-between text-xs text-amber-200/80 mb-2">
-                          <span>Watch progress · {Math.round(watchPercentage)}%</span>
+                          <span>
+                            Watch progress · {Math.round(watchPercentage)}%
+                          </span>
                           <span className="font-mono">
-                            {formatDuration(watchedSeconds)} / {watchRequiredSeconds > 0 ? formatDuration(watchRequiredSeconds) : "detecting…"}
+                            {formatDuration(watchedSeconds)} /{" "}
+                            {watchRequiredSeconds > 0
+                              ? formatDuration(watchRequiredSeconds)
+                              : "detecting…"}
                           </span>
                         </div>
                         <div className="h-1.5 bg-black/30 rounded-full overflow-hidden">
                           <div
                             className="h-full rounded-full bg-amber-400 transition-all duration-300"
-                            style={{ width: `${Math.min(watchPercentage, 100)}%` }}
+                            style={{
+                              width: `${Math.min(watchPercentage, 100)}%`,
+                            }}
                           />
                         </div>
                         <p className="mt-1.5 text-[11px] text-amber-100/50 leading-relaxed">
-                          Watch at least 75% before marking complete. Skipping forward won't count.
+                          Watch at least 75% before marking complete. Skipping
+                          forward won't count.
                         </p>
                       </div>
                     )}
@@ -839,23 +999,30 @@ export default function LearnPage() {
                 )}
 
                 {/* External video */}
-                {!currentLesson.video_url && currentLesson.external_video_link && (
-                  <div className="space-y-3">
-                    <div className="aspect-video w-full bg-zinc-900 rounded-2xl overflow-hidden border border-white/8">
-                      <iframe
-                        src={currentLesson.external_video_link.replace("watch?v=", "embed/")}
-                        className="w-full h-full"
-                        allowFullScreen
-                      />
+                {!currentLesson.video_url &&
+                  currentLesson.external_video_link && (
+                    <div className="space-y-3">
+                      <div className="aspect-video w-full bg-zinc-900 rounded-2xl overflow-hidden border border-white/8">
+                        <iframe
+                          src={currentLesson.external_video_link.replace(
+                            "watch?v=",
+                            "embed/",
+                          )}
+                          className="w-full h-full"
+                          allowFullScreen
+                        />
+                      </div>
+                      <p className="rounded-xl border border-blue-400/15 bg-blue-500/8 px-3 py-2 text-xs text-blue-200/70">
+                        External videos can't expose exact watch time. Anti-skip
+                        tracking only applies to uploaded videos.
+                      </p>
                     </div>
-                    <p className="rounded-xl border border-blue-400/15 bg-blue-500/8 px-3 py-2 text-xs text-blue-200/70">
-                      External videos can't expose exact watch time. Anti-skip tracking only applies to uploaded videos.
-                    </p>
-                  </div>
-                )}
+                  )}
 
                 {/* Resources */}
-                {(currentLesson.pdf_url || (currentLesson.external_video_link && currentLesson.video_url)) && (
+                {(currentLesson.pdf_url ||
+                  (currentLesson.external_video_link &&
+                    currentLesson.video_url)) && (
                   <div className="flex flex-wrap gap-2">
                     {currentLesson.pdf_url && (
                       <a
@@ -868,17 +1035,18 @@ export default function LearnPage() {
                         Download PDF
                       </a>
                     )}
-                    {currentLesson.external_video_link && currentLesson.video_url && (
-                      <a
-                        href={currentLesson.external_video_link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 px-3.5 py-2 bg-orange-500/10 border border-orange-500/20 rounded-xl text-xs text-orange-400 hover:bg-orange-500/18 transition-colors"
-                      >
-                        <ExternalLink size={13} />
-                        External Resource
-                      </a>
-                    )}
+                    {currentLesson.external_video_link &&
+                      currentLesson.video_url && (
+                        <a
+                          href={currentLesson.external_video_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-3.5 py-2 bg-orange-500/10 border border-orange-500/20 rounded-xl text-xs text-orange-400 hover:bg-orange-500/18 transition-colors"
+                        >
+                          <ExternalLink size={13} />
+                          External Resource
+                        </a>
+                      )}
                   </div>
                 )}
 
@@ -888,7 +1056,9 @@ export default function LearnPage() {
                     variant="secondary"
                     size="sm"
                     disabled={currentIndex === 0}
-                    onClick={() => handleSelectLesson(lessons[currentIndex - 1])}
+                    onClick={() =>
+                      handleSelectLesson(lessons[currentIndex - 1])
+                    }
                   >
                     <ChevronLeft size={15} />
                     Previous
@@ -897,7 +1067,9 @@ export default function LearnPage() {
                     variant="secondary"
                     size="sm"
                     disabled={currentIndex === lessons.length - 1}
-                    onClick={() => handleSelectLesson(lessons[currentIndex + 1])}
+                    onClick={() =>
+                      handleSelectLesson(lessons[currentIndex + 1])
+                    }
                   >
                     Next
                     <ChevronRight size={15} />
@@ -911,11 +1083,17 @@ export default function LearnPage() {
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <ClipboardList size={16} className="text-orange-400" />
-                    <span className="text-xs text-zinc-500 uppercase tracking-wider font-mono">Assignment</span>
+                    <span className="text-xs text-zinc-500 uppercase tracking-wider font-mono">
+                      Assignment
+                    </span>
                   </div>
-                  <h2 className="text-2xl font-bold text-zinc-100">{activeAssignment.title}</h2>
+                  <h2 className="text-2xl font-bold text-zinc-100">
+                    {activeAssignment.title}
+                  </h2>
                   {activeAssignment.description && (
-                    <p className="text-zinc-400 leading-relaxed mt-2 text-sm">{activeAssignment.description}</p>
+                    <p className="text-zinc-400 leading-relaxed mt-2 text-sm">
+                      {activeAssignment.description}
+                    </p>
                   )}
                   {activeAssignment.due_date && (
                     <p className="text-xs text-orange-400 mt-2 font-mono">
@@ -928,41 +1106,77 @@ export default function LearnPage() {
                   <div className="bg-green-500/8 border border-green-500/20 rounded-2xl p-5 space-y-3">
                     <div className="flex items-center gap-2">
                       <CheckCircle size={16} className="text-green-400" />
-                      <p className="text-sm font-medium text-green-400">Submitted</p>
+                      <p className="text-sm font-medium text-green-400">
+                        Submitted
+                      </p>
                     </div>
                     {mySubmission.file_url && (
-                      <a href={mySubmission.file_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-400 underline block">
+                      <a
+                        href={mySubmission.file_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-400 underline block"
+                      >
                         View my submission
                       </a>
                     )}
                     {mySubmission.grade !== null ? (
                       <div className="pt-3 border-t border-green-500/20 space-y-1">
                         <p className="text-sm text-zinc-300">
-                          Grade: <span className="font-bold text-violet-400 ml-1">{mySubmission.grade}/100</span>
+                          Grade:{" "}
+                          <span className="font-bold text-violet-400 ml-1">
+                            {mySubmission.grade}/100
+                          </span>
                         </p>
                         {mySubmission.feedback && (
-                          <p className="text-sm text-zinc-400">Feedback: {mySubmission.feedback}</p>
+                          <p className="text-sm text-zinc-400">
+                            Feedback: {mySubmission.feedback}
+                          </p>
                         )}
                       </div>
                     ) : (
-                      <p className="text-xs text-zinc-500">Awaiting grade from teacher</p>
+                      <p className="text-xs text-zinc-500">
+                        Awaiting grade from teacher
+                      </p>
                     )}
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <p className="text-sm text-zinc-400">Submit your work. You can optionally attach a file.</p>
+                    <p className="text-sm text-zinc-400">
+                      Submit your work. You can optionally attach a file.
+                    </p>
                     <label className="cursor-pointer block">
-                      <div className={`w-full h-28 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center gap-2 transition-colors ${
-                        submitFile ? "border-violet-500/50 bg-violet-500/5" : "border-white/10 hover:border-violet-500/30 bg-white/3"
-                      }`}>
-                        <Upload size={20} className={submitFile ? "text-violet-400" : "text-zinc-500"} />
+                      <div
+                        className={`w-full h-28 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center gap-2 transition-colors ${
+                          submitFile
+                            ? "border-violet-500/50 bg-violet-500/5"
+                            : "border-white/10 hover:border-violet-500/30 bg-white/3"
+                        }`}
+                      >
+                        <Upload
+                          size={20}
+                          className={
+                            submitFile ? "text-violet-400" : "text-zinc-500"
+                          }
+                        />
                         <span className="text-sm text-zinc-500">
-                          {submitFile ? submitFile.name : "Click to attach file (optional)"}
+                          {submitFile
+                            ? submitFile.name
+                            : "Click to attach file (optional)"}
                         </span>
                       </div>
-                      <input type="file" className="hidden" onChange={(e) => setSubmitFile(e.target.files?.[0] || null)} />
+                      <input
+                        type="file"
+                        className="hidden"
+                        onChange={(e) =>
+                          setSubmitFile(e.target.files?.[0] || null)
+                        }
+                      />
                     </label>
-                    <Button onClick={handleSubmitAssignment} loading={submitting}>
+                    <Button
+                      onClick={handleSubmitAssignment}
+                      loading={submitting}
+                    >
                       <Upload size={14} />
                       Submit Assignment
                     </Button>
@@ -997,21 +1211,30 @@ export default function LearnPage() {
             {chatOpen && (
               <>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-zinc-300 leading-none">AI Assistant</p>
-                  <p className="text-[10px] text-zinc-600 mt-0.5">Ask about this lesson</p>
+                  <p className="text-xs font-medium text-zinc-300 leading-none">
+                    AI Assistant
+                  </p>
+                  <p className="text-[10px] text-zinc-600 mt-0.5">
+                    Ask about this lesson
+                  </p>
                 </div>
                 <ChevronRight size={13} className="text-zinc-600 rotate-180" />
               </>
             )}
             {!chatOpen && (
-              <ChevronLeft size={13} className="text-zinc-600 rotate-180 absolute" />
+              <ChevronLeft
+                size={13}
+                className="text-zinc-600 rotate-180 absolute"
+              />
             )}
           </div>
 
           {chatOpen && (
             <div className="flex-1 overflow-hidden">
               <ChatPanel
-                lessonId={view === "lesson" ? (currentLesson?.id ?? null) : null}
+                lessonId={
+                  view === "lesson" ? (currentLesson?.id ?? null) : null
+                }
                 userId={user?.id ?? 0}
               />
             </div>
