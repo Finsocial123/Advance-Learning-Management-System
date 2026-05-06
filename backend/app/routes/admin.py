@@ -249,27 +249,27 @@ def update_user_role(
 
 
 # Delete a user account
-@router.delete("/users/{user_id}")
-def delete_user(
-    user_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["admin"]))
-):
-    user = db.query(User).filter(User.id == user_id).first()
+# @router.delete("/users/{user_id}")
+# def delete_user(
+#     user_id: int,
+#     db: Session = Depends(get_db),
+#     current_user: User = Depends(require_role(["admin"]))
+# ):
+#     user = db.query(User).filter(User.id == user_id).first()
 
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+#     if not user:
+#         raise HTTPException(status_code=404, detail="User not found")
 
-    if user.id == current_user.id:
-        raise HTTPException(
-            status_code=400,
-            detail="You cannot delete your own account"
-        )
+#     if user.id == current_user.id:
+#         raise HTTPException(
+#             status_code=400,
+#             detail="You cannot delete your own account"
+#         )
 
-    user.is_active = False
-    db.commit()
+#     user.is_active = False
+#     db.commit()
 
-    return {"message": f"User '{user.name}' deactivated successfully"}
+#     return {"message": f"User '{user.name}' deactivated successfully"}
 
 
 # Deactivate / reactivate a user

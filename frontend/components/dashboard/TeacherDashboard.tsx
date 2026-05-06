@@ -65,11 +65,16 @@ export default function TeacherDashboard() {
 
               {expandedCourse === course.course_id && (
                 <div className="px-8 pb-8 pt-4 border-t border-white/5 bg-white/[0.01] animate-in slide-in-from-top-2 duration-300">
-                  <div className="flex items-center justify-between mb-6">
+                  <div className="flex flex-col gap-3 mb-6 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Engagement Analytics</p>
-                    <Button variant="ghost" size="sm" className="h-7 text-[10px]" onClick={() => router.push(`/teacher/courses/${course.course_id}/edit`)}>
-                      <Edit3 size={12} className="mr-1" /> Edit Course
-                    </Button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button variant="secondary" size="sm" className="h-7 text-[10px]" onClick={() => router.push(`/teacher/courses/${course.course_id}/students`)}>
+                        <Users size={12} className="mr-1" /> Student Report
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-7 text-[10px]" onClick={() => router.push(`/teacher/courses/${course.course_id}/edit`)}>
+                        <Edit3 size={12} className="mr-1" /> Edit Course
+                      </Button>
+                    </div>
                   </div>
                   {course.students.length === 0 ? (
                     <p className="text-sm text-zinc-600 italic">No student engagement recorded yet.</p>

@@ -377,20 +377,20 @@ export default function AdminUsersPage() {
                               )}
                             </Button>
 
-                            <Button
-                              size="sm"
-                              variant="danger"
-                              title="Deactivate user"
-                              onClick={() => setDeleteModal(user)}
-                            >
-                              <Trash2 size={13} />
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          {/* delete */}
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            onClick={() => setDeleteModal(u)}
+                          >
+                            <Trash2 size={13} />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
 

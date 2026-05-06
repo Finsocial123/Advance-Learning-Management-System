@@ -1,5 +1,9 @@
 import api from "@/lib/axios";
-import { Course } from "@/types";
+import {
+  Course,
+  CourseStudentProgressReport,
+  CourseStudentsProgressResponse,
+} from "@/types";
 
 export const courseService = {
   async getAll(search?: string) {
@@ -40,7 +44,7 @@ export const courseService = {
       title?: string;
       description?: string;
       thumbnail?: File | null;
-    }
+    },
   ) {
     const formData = new FormData();
     if (data.title) formData.append("title", data.title);
@@ -60,7 +64,16 @@ export const courseService = {
   },
 
   async getEnrolledStudents(courseId: number) {
-    const res = await api.get(`/courses/${courseId}/students`);
+    const res = await api.get<CourseStudentProgressReport[]>(
+      `/courses/${courseId}/students`,
+    );
+    return res.data;
+  },
+
+  async getStudentsProgressReport(courseId: number) {
+    const res = await api.get<CourseStudentsProgressResponse>(
+      `/courses/${courseId}/students/progress`,
+    );
     return res.data;
   },
 };
