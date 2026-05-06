@@ -15,6 +15,11 @@ TOOLS = [
                         "type": "integer",
                         "description": "Number of questions to generate. Default is 5.",
                         "default": 5
+                    },
+                    "difficulty": {
+                        "type": "string",
+                        "enum": ["easy", "medium", "hard"],
+                        "default": "medium"
                     }
                 },
                 "required": ["lesson_id"]
