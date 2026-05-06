@@ -17,7 +17,7 @@ class VideoWatchProgress(Base):
     id = Column(Integer, primary_key=True, index=True)
 
     student_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    lesson_id = Column(Integer, ForeignKey("lessons.id"), nullable=False)
+    lesson_id = Column(Integer, ForeignKey("lessons.id", ondelete="CASCADE"), nullable=False)
 
     # Actual credited watch time. This is increased only through small server-validated pings.
     watched_seconds = Column(Float, default=0, nullable=False)
