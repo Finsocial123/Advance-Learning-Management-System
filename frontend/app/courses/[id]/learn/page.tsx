@@ -89,7 +89,6 @@ const MessageContent = ({
       remarkPlugins={[remarkGfm]}
       rehypePlugins={[rehypeSanitize]}
       components={{
-        // Optional: customise elements
         pre: ({ children }) => (
           <pre className="bg-black/20 rounded-lg p-3 my-2 overflow-x-auto">
             {children}
@@ -175,7 +174,6 @@ function ChatPanel({
     setInput("");
     setLoading(true);
 
-    // Create an empty assistant placeholder that will be filled token by token
     const assistantId = crypto.randomUUID();
     const assistantMsg: ChatMessage = {
       id: assistantId,
@@ -197,7 +195,7 @@ function ChatPanel({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Accept: "text/event-stream", // tell the server we want SSE
+          Accept: "text/event-stream",
         },
         body: JSON.stringify(payload),
       });
@@ -207,7 +205,7 @@ function ChatPanel({
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
-      let buffer = ""; // buffer for incomplete SSE lines
+      let buffer = "";
 
       readerRef.current = reader;
 
@@ -217,14 +215,12 @@ function ChatPanel({
 
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split("\n");
-        // Keep the last potentially incomplete line
+
         buffer = lines.pop() || "";
 
         for (const line of lines) {
-          // Ignore empty lines and comments
           if (!line.trim() || line.startsWith(":")) continue;
 
-          // Remove "data: " prefix
           let dataStr = line;
           if (line.startsWith("data: ")) dataStr = line.slice(6);
 
@@ -232,7 +228,6 @@ function ChatPanel({
             const event = JSON.parse(dataStr);
 
             if (event.token) {
-              // Append the new token to the assistant message
               setMessages((prev) =>
                 prev.map((msg) =>
                   msg.id === assistantId
@@ -241,16 +236,12 @@ function ChatPanel({
                 ),
               );
             } else if (event.status === "done") {
-              // Stream finished – stop reading
               reader.cancel();
               break;
             } else if (event.status === "thinking") {
-              // Optional: you could show a "Thinking..." indicator.
-              // For now, do nothing (the placeholder bubble already shows dots).
             } else if (event.error) {
               throw new Error(event.error);
             }
-            // Any other event types can be ignored or logged
           } catch (e) {
             console.warn("Failed to parse SSE chunk:", dataStr, e);
           }
@@ -260,7 +251,6 @@ function ChatPanel({
       toast.error(
         err?.message || "Failed to get a response. Please try again.",
       );
-      // Remove the empty assistant placeholder on error, keep user message
       setMessages((prev) => prev.filter((m) => m.id !== assistantId));
     } finally {
       setLoading(false);
