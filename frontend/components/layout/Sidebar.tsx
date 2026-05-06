@@ -43,6 +43,12 @@ const navItems: NavItem[] = [
   },
   {
     label: "My Courses",
+    href: "/my-courses",
+    icon: BookOpen,
+    roles: ["student"],
+  },
+  {
+    label: "My Courses",
     href: "/teacher/courses",
     icon: ListVideo,
     roles: ["teacher", "admin"],
@@ -53,13 +59,14 @@ const navItems: NavItem[] = [
     icon: Plus,
     roles: ["teacher", "admin"],
   },
-  {
-    label: "Admin Panel",
-    href: "/admin",
-    icon: Shield,
-    roles: ["admin"],
-    exact: true,
-  },
+  // {
+  //   label: "Admin Panel",
+  //   href: "/admin",
+  //   icon: Shield,
+  //   roles: ["admin"],
+  //   exact: true,
+  // },
+  
   {
     label: "Manage Users",
     href: "/admin/users",
@@ -125,7 +132,7 @@ export default function Sidebar({ className }: { className?: string }) {
         className,
       )}
     >
-      <div className="mb-4 rounded-xl border border-slate-800 bg-slate-950/45 p-4">
+      {/* <div className="mb-4 rounded-xl border border-slate-800 bg-slate-950/45 p-4">
         <p className="text-xs text-slate-500">Signed in as</p>
         <p className="mt-1 truncate text-sm font-semibold text-white">
           {user.name}
@@ -133,12 +140,12 @@ export default function Sidebar({ className }: { className?: string }) {
         <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-300">
           {user.role}
         </p>
-      </div>
+      </div> */}
       <div className="space-y-6 overflow-y-auto pr-1">
         {renderGroup(
           "Main",
           visible.filter((item) =>
-            ["/dashboard", "/profile", "/courses"].includes(item.href),
+            ["/dashboard", "/profile", "/courses", "/my-courses"].includes(item.href),
           ),
         )}
         {renderGroup(
