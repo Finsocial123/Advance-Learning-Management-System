@@ -131,6 +131,15 @@ function ChatPanel({
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(
+    null,
+  );
+
+  useEffect(() => {
+    return () => {
+      readerRef.current?.cancel();
+    };
+  }, []);
 
   useEffect(() => {
     if (!lessonId) return;
@@ -148,11 +157,13 @@ function ChatPanel({
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [
+    messages,
+    messages.length > 0 ? messages[messages.length - 1]?.content : null,
+  ]);
 
   const sendMessage = async () => {
-    console.log("user id", userId);
-    if (!input.trim() || loading) return;
+    if (!input.trim() || loading || !sessionId) return;
 
     const userMsg: ChatMessage = {
       id: crypto.randomUUID(),
@@ -160,10 +171,19 @@ function ChatPanel({
       content: input.trim(),
       timestamp: new Date(),
     };
-
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setLoading(true);
+
+    // Create an empty assistant placeholder that will be filled token by token
+    const assistantId = crypto.randomUUID();
+    const assistantMsg: ChatMessage = {
+      id: assistantId,
+      role: "assistant",
+      content: "",
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, assistantMsg]);
 
     try {
       const payload = {
@@ -172,30 +192,76 @@ function ChatPanel({
         content: userMsg.content,
         lesson_id: lessonId,
       };
-      console.log(payload);
 
       const res = await fetch(`${API_URL}/sessions/${sessionId}/messages`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "text/event-stream", // tell the server we want SSE
+        },
         body: JSON.stringify(payload),
       });
 
       if (!res.ok) throw new Error("Chat request failed");
+      if (!res.body) throw new Error("No response body");
 
-      const data = await res.text();
-      console.log(data);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = ""; // buffer for incomplete SSE lines
 
-      const assistantMsg: ChatMessage = {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        content: data ?? "No response received.",
-        timestamp: new Date(),
-      };
+      readerRef.current = reader;
 
-      setMessages((prev) => [...prev, assistantMsg]);
-    } catch {
-      toast.error("Failed to get a response. Please try again.");
-      setMessages((prev) => prev.filter((m) => m.id !== userMsg.id));
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        // Keep the last potentially incomplete line
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          // Ignore empty lines and comments
+          if (!line.trim() || line.startsWith(":")) continue;
+
+          // Remove "data: " prefix
+          let dataStr = line;
+          if (line.startsWith("data: ")) dataStr = line.slice(6);
+
+          try {
+            const event = JSON.parse(dataStr);
+
+            if (event.token) {
+              // Append the new token to the assistant message
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === assistantId
+                    ? { ...msg, content: msg.content + event.token }
+                    : msg,
+                ),
+              );
+            } else if (event.status === "done") {
+              // Stream finished – stop reading
+              reader.cancel();
+              break;
+            } else if (event.status === "thinking") {
+              // Optional: you could show a "Thinking..." indicator.
+              // For now, do nothing (the placeholder bubble already shows dots).
+            } else if (event.error) {
+              throw new Error(event.error);
+            }
+            // Any other event types can be ignored or logged
+          } catch (e) {
+            console.warn("Failed to parse SSE chunk:", dataStr, e);
+          }
+        }
+      }
+    } catch (err: any) {
+      toast.error(
+        err?.message || "Failed to get a response. Please try again.",
+      );
+      // Remove the empty assistant placeholder on error, keep user message
+      setMessages((prev) => prev.filter((m) => m.id !== assistantId));
     } finally {
       setLoading(false);
       inputRef.current?.focus();
@@ -270,24 +336,19 @@ function ChatPanel({
                   : "bg-white/5 border border-white/8 text-zinc-300 rounded-tl-sm"
               }`}
             >
-              <MessageContent role={msg.role} content={msg.content} />
+              {msg.role === "assistant" && msg.content === "" && loading ? (
+                <div className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce [animation-delay:0ms]" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce [animation-delay:150ms]" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce [animation-delay:300ms]" />
+                </div>
+              ) : (
+                <MessageContent role={msg.role} content={msg.content} />
+              )}
               {/* {msg.content} */}
             </div>
           </div>
         ))}
-
-        {loading && (
-          <div className="flex gap-2.5">
-            <div className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center bg-zinc-700/60 border border-white/10">
-              <Bot size={13} className="text-zinc-300" />
-            </div>
-            <div className="bg-white/5 border border-white/8 rounded-2xl rounded-tl-sm px-3.5 py-3 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce [animation-delay:0ms]" />
-              <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce [animation-delay:150ms]" />
-              <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce [animation-delay:300ms]" />
-            </div>
-          </div>
-        )}
 
         <div ref={bottomRef} />
       </div>
