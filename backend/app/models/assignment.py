@@ -21,3 +21,4 @@ class Assignment(Base):
         backref="assignment",
         cascade="all, delete-orphan"
     )
+
