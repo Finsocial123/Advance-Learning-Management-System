@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import toast from "react-hot-toast";
-import { BookOpen, Edit, Eye, Plus, Trash2 } from "lucide-react";
+import { BookOpen, Edit, Eye, Plus, Trash2, Users } from "lucide-react";
 import { courseService } from "@/services/course.service";
 import { Course } from "@/types";
 import { useRoleGuard } from "@/hooks/useRoleGuard";
@@ -61,7 +61,7 @@ export default function TeacherCoursesPage() {
   }
 
   return (
-    <div className="page-shell">
+    <div className="page-shell px-4 py-5 sm:px-6 lg:px-8">
       <div className="section-header">
         <div className="mb-4">
           <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">My courses</h1>
@@ -106,6 +106,9 @@ export default function TeacherCoursesPage() {
               <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                 <Button size="sm" variant="ghost" onClick={() => router.push(`/courses/${course.id}`)}>
                   <Eye size={14} />
+                </Button>
+                <Button size="sm" variant="secondary" onClick={() => router.push(`/teacher/courses/${course.id}/students`)}>
+                  <Users size={14} /> Students
                 </Button>
                 <Button size="sm" variant="secondary" onClick={() => router.push(`/teacher/courses/${course.id}/lessons/create`)}>
                   <Plus size={14} /> Lesson
