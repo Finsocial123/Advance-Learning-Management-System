@@ -8,15 +8,16 @@ from io import BytesIO
 
 
 from app.core.database import get_db, get_async_db
-from app.models.lesson import Lesson
+from app.models.lesson import Lesson, LessonChunk
 from app.models.course import Course
 from app.models.user import User
-from app.schemas.lesson import LessonOut
+from app.schemas.lesson import LessonOut, SummaryRequest
 from app.utils.dependencies import get_current_user, require_role
 from app.utils.cloudinary import upload_file, delete_file
 from app.services.embedder import chunk_and_embed_lesson
 from app.services.extractor import extract_text_from_pdf
 from app.services.transcriber import transcribe_video
+from app.services.tools.summarizer import summarize_lesson
 
 from io import BytesIO
 
@@ -276,3 +277,58 @@ def delete_lesson(
     db.commit()
 
     return {"message": "Lesson deleted successfully"}
+
+
+@router.post('/{lesson_id}/course/{course_id}/{source}/summary')
+async def generate_lesson_summary(
+    course_id: int, 
+    lesson_id: int,
+    source: str,
+    db: Annotated[AsyncSession, Depends(get_async_db)]
+):
+    
+    result = await db.execute(
+        select(Course)
+        .where(Course.id == course_id))
+    
+    course = result.scalars().first()
+
+    if not course:
+        raise HTTPException(status_code=404, description="Course not found")
+    
+    result = await db.execute(
+        select(Lesson)
+        .where(Lesson.id == lesson_id, Lesson.course_id == course_id)
+    )
+
+    lesson = result.scalars().first()
+
+    if not lesson:
+        HTTPException(status_code=404, detail="Lesson not found")
+
+    result = (await db.execute(
+        select(LessonChunk)
+        .where(LessonChunk.lesson_id == lesson_id)
+        .limit(1)
+    ))
+
+    chunks_exits = result.scalars().first()
+    if not chunks_exits:
+        raise HTTPException(
+            status_code=422,
+            detail="No content for this lesson. Upload a PDF or Video first"
+        )
+
+    try:
+        summary = await summarize_lesson(
+            lesson_id=lesson_id,
+            lesson_order=lesson.order,
+            lesson_title=lesson.title,
+            source=source,
+            db=db
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+    return summary
+

@@ -1,3 +1,5 @@
+from app.core.config import OPENROUTER_API_KEY, TRANSCRIPTION_MODEL
+
 import os
 import math
 import tempfile
@@ -6,9 +8,6 @@ import httpx
 import ffmpeg
 import imageio_ffmpeg as iio_ffmpeg
 import base64
-from dotenv import load_dotenv
-
-load_dotenv()
 
 MAX_FILE_SIZE = 23 * 1024 * 1024  # 23 MB
 
@@ -102,11 +101,11 @@ async def transcribe_audio_bytes(audio_bytes: bytes, filename: str = "audio.mp3"
         response = await http.post(
             "https://openrouter.ai/api/v1/audio/transcriptions",
             headers={
-                "Authorization": f"Bearer {os.getenv('OPENROUTER_API_KEY')}",
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
                 "Content-Type": "application/json"
             },
             json={
-                "model": "openai/whisper-large-v3-turbo",
+                "model": TRANSCRIPTION_MODEL,
                 "input_audio": {
                     "data": base64_audio,
                     "format": "mp3"

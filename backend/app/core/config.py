@@ -3,6 +3,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+
+MODEL = os.getenv("MODEL")
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL")
+TRANSCRIPTION_MODEL = os.getenv("TRANSCRIPTION_MODEL")
+
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise RuntimeError("DATABASE_URL is missing in backend/.env")

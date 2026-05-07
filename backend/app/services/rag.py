@@ -1,9 +1,8 @@
+from app.core.config import EMBEDDING_MODEL
+
 import os
-from dotenv import load_dotenv
 
 from app.models.lesson import LessonChunk, Lesson
-
-load_dotenv()
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -19,7 +18,7 @@ async def retrieve_context(
 ) -> str:
 
     response = await client.embeddings.create(
-        model=os.getenv("EMBEDDING_MODEL"),
+        model=EMBEDDING_MODEL,
         input=query
     )
 
@@ -48,3 +47,5 @@ async def retrieve_context(
         for chunk, lesson_order, lesson_title in rows
     ]
     return "\n\n---\n\n".join(context_parts)
+
+
