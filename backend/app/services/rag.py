@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 
-from app.models.lesson import LessonChunk
+from app.models.lesson import LessonChunk, Lesson
 
 load_dotenv()
 
@@ -26,7 +26,8 @@ async def retrieve_context(
     query_embedding = response.data[0].embedding
 
     stmt = (
-        select(LessonChunk)
+        select(LessonChunk, Lesson.order, Lesson.title)
+        .join(Lesson, LessonChunk.lesson_id == Lesson.id)
         .order_by(LessonChunk.embedding.cosine_distance(query_embedding))
         .limit(top_k)
     )
@@ -37,14 +38,13 @@ async def retrieve_context(
     if source:
         stmt = stmt.where(LessonChunk.source == source)
 
-    result = await db.execute(stmt)
-    chunks = result.scalars().all()
+    rows = (await db.execute(stmt)).all()
 
-    if not chunks:
+    if not rows:
         return ""
     
     context_parts = [
-        f"[Lesson {chunk.lesson_id} | {chunk.source} | chunk {chunk.chunk_index}]\n{chunk.content}"
-        for chunk in chunks
+        f"[Lesson {lesson_order}: {lesson_title} | {chunk.source} | chunk {chunk.chunk_index}]\n{chunk.content}"
+        for chunk, lesson_order, lesson_title in rows
     ]
     return "\n\n---\n\n".join(context_parts)

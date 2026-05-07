@@ -321,20 +321,32 @@ def get_my_submission(
 
 
 
-@router.post("/api/lessons/{lesson_id}/quiz")
+@router.post("/api/course/{course_id}/lessons/{lesson_id}/quiz")
 async def generate_lesson_quiz(
+    course_id: int,
     lesson_id: int,
     request: QuizRequest,
     db: Annotated[AsyncSession, Depends(get_async_db)]
 ):
-    # verify lesson exists
-    lesson = (await db.execute(
-        select(Lesson).where(Lesson.id == lesson_id)
-    )).scalars().first()
-    if not lesson:
-        raise HTTPException(status_code=404, detail="Lesson not found")
 
-    # check content exists
+    result = await db.execute(select(Course).where(course_id == Course.id))
+    course = result.scalars().first()
+
+    if not course:
+        raise HTTPException(status_code=404, description="Course not found")
+
+    result = (await db.execute(
+        select(Lesson)
+        .where(
+            Lesson.id == lesson_id,
+            Lesson.course_id == course_id
+        )
+    ))
+    lesson = result.scalars().first()
+
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found in this course")
+    
     chunk_count = (await db.execute(
         select(LessonChunk)
         .where(LessonChunk.lesson_id == lesson_id)
