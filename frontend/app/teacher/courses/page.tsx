@@ -61,7 +61,7 @@ export default function TeacherCoursesPage() {
   }
 
   return (
-    <div className="page-shell">
+    <div className="page-shell px-4 py-5 sm:px-6 lg:px-8">
       <div className="section-header">
         <div className="mb-4">
           <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">My courses</h1>

@@ -32,7 +32,7 @@ export default function StudentCoursesPage() {
       : 0;
 
   return (
-    <div className="page-shell">
+    <div className="page-shell px-4 py-5 sm:px-6 lg:px-8">
       {/* Header */}
       <div className="surface-card rounded-3xl p-6 sm:p-8">
         <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">

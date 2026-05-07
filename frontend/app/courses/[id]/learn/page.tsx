@@ -794,7 +794,7 @@ export default function LearnPage() {
   return (
     <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
       {/* ── Left Sidebar ── */}
-      <aside className="hidden lg:flex flex-col w-64 xl:w-72 shrink-0 border-r border-white/8 bg-zinc-950/50 overflow-hidden">
+      <aside className="hidden lg:flex flex-col w-64 xl:w-72 shrink-0 border-r border-white/8 bg-zinc-950 overflow-hidden">
         {/* Progress header */}
         <div className="px-4 py-4 border-b border-white/8">
           <div className="flex items-center justify-between mb-2">
