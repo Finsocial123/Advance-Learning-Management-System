@@ -26,23 +26,4 @@ TOOLS = [
             }
         }
     },
-
-    # {
-    #     "type": "function",
-    #     "function": {
-    #         "name": "lesson_summarizer",
-    #         "description": "Summarize the content of a lesson. Call this when the student asks for a summary, overview, or key points of a lesson.",
-    #         "parameters": {
-    #             "type": "object",
-    #             "properties": {
-    #                 "lesson_id": {
-    #                     "type": "integer",
-    #                     "description": "The ID of the lesson to summarize"
-    #                 }
-    #             },
-    #             "required": ["lesson_id"]
-    #         }
-
-    #     }
-    # }
 ]

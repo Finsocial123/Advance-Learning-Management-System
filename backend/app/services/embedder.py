@@ -1,5 +1,4 @@
-from dotenv import load_dotenv
-load_dotenv()
+from app.core.config import EMBEDDING_MODEL
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from sqlalchemy.orm import Session
@@ -35,7 +34,7 @@ async def chunk_and_embed_lesson(lesson_id: int, text: str, source: str, db: Ses
         return 0
 
     response = await client.embeddings.create(
-        model=os.getenv("EMBEDDING_MODEL"),
+        model=EMBEDDING_MODEL,
         input=chunks
     )
 

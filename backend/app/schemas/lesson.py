@@ -30,3 +30,8 @@ class LessonOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class SummaryRequest(BaseModel):
+    source: str | None = None
+    
