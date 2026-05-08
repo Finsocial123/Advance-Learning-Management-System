@@ -20,6 +20,9 @@ import {
   ChevronDown,
   BookOpen,
   Layers,
+  Sparkles,
+  Minimize2,
+  Maximize2,
 } from "lucide-react";
 
 import { lessonService } from "@/services/lesson.service";
@@ -55,6 +58,13 @@ interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
+}
+
+interface SummaryContent {
+  title: string;
+  overview: string;
+  key_concepts: string[];
+  key_takeaway: string;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -199,6 +209,7 @@ function ChatPanel({
         },
         body: JSON.stringify(payload),
       });
+      console.log(payload)
 
       if (!res.ok) throw new Error("Chat request failed");
       if (!res.body) throw new Error("No response body");
@@ -407,6 +418,14 @@ export default function LearnPage() {
   const [sidebarTab, setSidebarTab] = useState<"lessons" | "assignments">(
     "lessons",
   );
+
+  // ── Summarizer state ──
+  const [summaryModalOpen, setSummaryModalOpen] = useState(false);
+  const [summaryMinimized, setSummaryMinimized] = useState(false);
+  const [summaryContent, setSummaryContent] = useState<SummaryContent | null>(
+    null,
+  );
+  const [summaryLoading, setSummaryLoading] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const watchIntervalRef = useRef<number | null>(null);
@@ -740,16 +759,64 @@ export default function LearnPage() {
     return `Watch ${formatDuration(remainingWatchSeconds)} more before marking complete.`;
   };
 
+  const handleSummarize = async () => {
+    if (!currentLesson) return;
+    setSummaryLoading(true);
+    setSummaryContent(null);
+    setSummaryModalOpen(true);
+    setSummaryMinimized(false);
+    const source = "transcript";
+    const payload = {
+      course_id: courseId,
+      lesson_id: currentLesson.id,
+      source: "transcript",
+    };
+
+    console.log(payload);
+    try {
+      const res = await fetch(
+        `${API_URL}/lessons/${currentLesson.id}/course/${courseId}/${source}/summary`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            course_id: courseId,
+            lesson_id: currentLesson.id,
+            source: "transcript",
+          }),
+        },
+      );
+      if (!res.ok) throw new Error("Failed to generate summary");
+      const data = await res.json();
+      console.log(data);
+      setSummaryContent({
+        overview: data.overview,
+        title: data.lesson_title,
+        key_concepts: data.key_concepts,
+        key_takeaway: data.key_takeaway,
+      });
+    } catch (err: any) {
+      toast.error(err?.message || "Could not generate summary. Try again.");
+      setSummaryModalOpen(false);
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
+
   const handleMarkComplete = async () => {
     if (!currentLesson) return;
+
     if (!isCompleted(currentLesson.id)) {
       await flushWatchProgress();
+
       if (markCompleteLocked) {
         toast.error(getLockedCompleteMessage());
         return;
       }
     }
+
     setMarkingDone(true);
+
     try {
       if (isCompleted(currentLesson.id)) {
         await progressService.markIncomplete(currentLesson.id);
@@ -758,6 +825,7 @@ export default function LearnPage() {
         await progressService.markComplete(currentLesson.id);
         toast.success("Lesson completed!");
       }
+
       const updated = await progressService.getCourseProgress(courseId);
       setProgress(updated);
     } catch (err) {
@@ -950,6 +1018,17 @@ export default function LearnPage() {
                   </div>
 
                   <div className="flex items-center gap-2">
+                    {currentLesson && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={handleSummarize}
+                        loading={summaryLoading}
+                      >
+                        <Sparkles size={13} className="text-violet-400" />
+                        Summarize
+                      </Button>
+                    )}
                     <Button
                       size="sm"
                       variant={
@@ -1292,6 +1371,212 @@ export default function LearnPage() {
           )}
         </div>
       </div>
+
+      {/* ── Summary Modal (full-page) ── */}
+      {summaryModalOpen && !summaryMinimized && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-zinc-950/95 backdrop-blur-md">
+          {/* Modal header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-white/8 shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-violet-500/15 border border-violet-500/25 flex items-center justify-center">
+                <Sparkles size={15} className="text-violet-400" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-zinc-100">
+                  Lesson Summary
+                </p>
+                <p className="text-[11px] text-zinc-500 mt-0.5 truncate max-w-xs">
+                  {currentLesson?.title}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setSummaryMinimized(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/8 border border-white/8 transition-colors"
+                title="Minimize"
+              >
+                <Minimize2 size={13} />
+                Minimize
+              </button>
+              <button
+                onClick={() => {
+                  setSummaryModalOpen(false);
+                  setSummaryMinimized(false);
+                  setSummaryContent(null);
+                }}
+                className="w-8 h-8 rounded-xl hover:bg-white/8 flex items-center justify-center text-zinc-500 hover:text-zinc-200 transition-colors"
+                title="Close"
+              >
+                <X size={15} />
+              </button>
+            </div>
+          </div>
+
+          {/* Modal body */}
+          <div className="flex-1 overflow-y-auto scrollbar-thin px-6 py-6">
+            <div className="max-w-3xl mx-auto">
+              {summaryLoading ? (
+                <div className="flex flex-col items-center justify-center py-32 gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
+                    <Sparkles
+                      size={20}
+                      className="text-violet-400 animate-pulse"
+                    />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-medium text-zinc-300">
+                      Generating summary…
+                    </p>
+                    <p className="text-xs text-zinc-600 mt-1">
+                      Analysing the lesson transcript
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <span className="w-2 h-2 rounded-full bg-violet-500 animate-bounce [animation-delay:0ms]" />
+                    <span className="w-2 h-2 rounded-full bg-violet-500 animate-bounce [animation-delay:150ms]" />
+                    <span className="w-2 h-2 rounded-full bg-violet-500 animate-bounce [animation-delay:300ms]" />
+                  </div>
+                </div>
+              ) : (
+                <div className="max-w-4xl mx-auto space-y-6">
+                  {/* Title Card */}
+                  <div className="rounded-3xl border border-violet-500/20 bg-gradient-to-br from-violet-500/10 to-transparent p-6">
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-violet-500/15 border border-violet-500/25 flex items-center justify-center shrink-0">
+                        <Sparkles size={20} className="text-violet-400" />
+                      </div>
+
+                      <div>
+                        <p className="text-xs uppercase tracking-widest text-violet-400 font-mono mb-2">
+                          AI Generated Summary
+                        </p>
+
+                        <h1 className="text-3xl font-bold text-zinc-100 leading-tight">
+                          {summaryContent?.title}
+                        </h1>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Overview */}
+                  <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-6">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-8 h-8 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+                        <BookOpen size={15} className="text-blue-400" />
+                      </div>
+
+                      <h2 className="text-lg font-semibold text-zinc-100">
+                        Overview
+                      </h2>
+                    </div>
+
+                    <div className="prose prose-invert prose-sm max-w-none prose-p:text-zinc-300 leading-relaxed">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        rehypePlugins={[rehypeSanitize]}
+                      >
+                        {summaryContent?.overview || ""}
+                      </ReactMarkdown>
+                    </div>
+                  </div>
+
+                  {/* Key Concepts */}
+                  <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-6">
+                    <div className="flex items-center gap-2 mb-5">
+                      <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                        <Layers size={15} className="text-emerald-400" />
+                      </div>
+
+                      <h2 className="text-lg font-semibold text-zinc-100">
+                        Key Concepts
+                      </h2>
+                    </div>
+
+                    <div className="grid gap-3">
+                      {summaryContent?.key_concepts?.map(
+                        (concept: string, idx: number) => (
+                          <div
+                            key={idx}
+                            className="group rounded-2xl border border-white/8 bg-black/20 p-4 hover:border-violet-500/20 hover:bg-violet-500/[0.03] transition-all"
+                          >
+                            <div className="flex gap-3 items-start">
+                              <div className="w-7 h-7 rounded-full bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-xs font-bold text-violet-400 shrink-0 mt-0.5">
+                                {idx + 1}
+                              </div>
+
+                              <p className="text-sm text-zinc-300 leading-relaxed">
+                                {concept}
+                              </p>
+                            </div>
+                          </div>
+                        ),
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Key Takeaway */}
+                  <div className="rounded-2xl border border-amber-500/15 bg-amber-500/[0.04] p-6">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                        <Sparkles size={15} className="text-amber-400" />
+                      </div>
+
+                      <h2 className="text-lg font-semibold text-zinc-100">
+                        Key Takeaway
+                      </h2>
+                    </div>
+
+                    <p className="text-zinc-300 leading-relaxed text-[15px]">
+                      {summaryContent?.key_takeaway}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Summary Minimized Bar (below video player area) ── */}
+      {summaryModalOpen && summaryMinimized && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-between px-5 py-3 bg-zinc-900 border-t border-violet-500/30 shadow-2xl">
+          <div className="flex items-center gap-3">
+            <div className="w-7 h-7 rounded-lg bg-violet-500/15 border border-violet-500/25 flex items-center justify-center shrink-0">
+              <Sparkles size={13} className="text-violet-400" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-zinc-300">
+                Lesson Summary
+              </p>
+              <p className="text-[10px] text-zinc-500 mt-0.5 truncate max-w-xs">
+                {summaryLoading ? "Generating…" : currentLesson?.title}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSummaryMinimized(false)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/8 border border-white/8 transition-colors"
+              title="Expand"
+            >
+              <Maximize2 size={13} />
+              Expand
+            </button>
+            <button
+              onClick={() => {
+                setSummaryModalOpen(false);
+                setSummaryMinimized(false);
+                setSummaryContent(null);
+              }}
+              className="w-7 h-7 rounded-lg hover:bg-white/8 flex items-center justify-center text-zinc-500 hover:text-zinc-200 transition-colors"
+              title="Close"
+            >
+              <X size={13} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
