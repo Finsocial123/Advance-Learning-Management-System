@@ -98,7 +98,7 @@ async def send_message_stream(
             query=request.content,
             db=db,
             lesson_id=request.lesson_id,
-            top_k=4
+            top_k=6
         )
         user_content = RAG_PROMPT_TEMPLATE.format(
             context=context,
@@ -140,10 +140,13 @@ async def send_message_stream(
         history=raw_history,
         system_prompt=SYSTEM_PROMPT,
         rag_context=context,
-        max_tokens=6000
+        max_tokens=50000
     )
 
     messages = [{"role": "system", "content": SYSTEM_PROMPT}] + trimmed_history
+
+    print("MESSAGES:", json.dumps(messages, indent=2))
+
 
     full_response = []
 
@@ -153,8 +156,7 @@ async def send_message_stream(
                 first_response = await client.chat.completions.create(
                     model=request.model,
                     messages=messages,
-                    tools=TOOLS,
-                    tool_choice="auto",
+                    **({"tools": TOOLS, "tool_choice": "auto"} if TOOLS else {}),
                     stream=False
                 )
 
