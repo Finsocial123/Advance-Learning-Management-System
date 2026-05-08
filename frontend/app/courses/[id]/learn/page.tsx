@@ -875,7 +875,7 @@ export default function LearnPage() {
           </div>
           <div className="h-1.5 bg-white/8 rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-violet-500 to-violet-400 rounded-full transition-all duration-500"
+              className="h-full bg-linear-to-r from-violet-500 to-violet-400 rounded-full transition-all duration-500"
               style={{ width: `${overallProgress}%` }}
             />
           </div>
@@ -1094,7 +1094,7 @@ export default function LearnPage() {
                         }}
                         onSeeking={handleVideoSeeking}
                         onSeeked={handleVideoSeeked}
-                        className="w-full max-h-[460px]"
+                        className="w-full max-h-115"
                       />
                     </div>
 
@@ -1441,7 +1441,7 @@ export default function LearnPage() {
               ) : (
                 <div className="max-w-4xl mx-auto space-y-6">
                   {/* Title Card */}
-                  <div className="rounded-3xl border border-violet-500/20 bg-gradient-to-br from-violet-500/10 to-transparent p-6">
+                  <div className="rounded-3xl border border-violet-500/20 bg-linear-to-br from-violet-500/10 to-transparent p-6">
                     <div className="flex items-start gap-4">
                       <div className="w-12 h-12 rounded-2xl bg-violet-500/15 border border-violet-500/25 flex items-center justify-center shrink-0">
                         <Sparkles size={20} className="text-violet-400" />
@@ -1460,7 +1460,7 @@ export default function LearnPage() {
                   </div>
 
                   {/* Overview */}
-                  <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-6">
+                  <div className="rounded-2xl border border-white/8 bg-white/3 p-6">
                     <div className="flex items-center gap-2 mb-4">
                       <div className="w-8 h-8 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
                         <BookOpen size={15} className="text-blue-400" />
@@ -1482,7 +1482,7 @@ export default function LearnPage() {
                   </div>
 
                   {/* Key Concepts */}
-                  <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-6">
+                  <div className="rounded-2xl border border-white/8 bg-white/3 p-6">
                     <div className="flex items-center gap-2 mb-5">
                       <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
                         <Layers size={15} className="text-emerald-400" />
@@ -1498,7 +1498,7 @@ export default function LearnPage() {
                         (concept: string, idx: number) => (
                           <div
                             key={idx}
-                            className="group rounded-2xl border border-white/8 bg-black/20 p-4 hover:border-violet-500/20 hover:bg-violet-500/[0.03] transition-all"
+                            className="group rounded-2xl border border-white/8 bg-black/20 p-4 hover:border-violet-500/20 hover:bg-violet-500/3 transition-all"
                           >
                             <div className="flex gap-3 items-start">
                               <div className="w-7 h-7 rounded-full bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-xs font-bold text-violet-400 shrink-0 mt-0.5">
@@ -1516,7 +1516,7 @@ export default function LearnPage() {
                   </div>
 
                   {/* Key Takeaway */}
-                  <div className="rounded-2xl border border-amber-500/15 bg-amber-500/[0.04] p-6">
+                  <div className="rounded-2xl border border-amber-500/15 bg-amber-500/4 p-6">
                     <div className="flex items-center gap-2 mb-4">
                       <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
                         <Sparkles size={15} className="text-amber-400" />
