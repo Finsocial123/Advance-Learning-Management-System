@@ -32,7 +32,8 @@ def trim_history(
     budget = max_tokens - reserved
 
     if budget <= 0:
-        return []
+        last = history[-1] if history else None
+        return [last] if last else []
     
     kept = []
     used = 0
@@ -45,6 +46,11 @@ def trim_history(
         kept.append(msg)
         used += msg_tokens
     
+    if not kept or kept[-1].get("role") != "user":
+        last_user = next((m for m in reversed(history) if m.get("role") == "user"), None)
+        if last_user and last_user not in kept:
+            kept.append(last_user)
+            
     kept.reverse()
 
     trimmed_count = len(history) - len(kept)
