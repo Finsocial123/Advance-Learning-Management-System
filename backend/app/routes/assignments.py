@@ -363,7 +363,8 @@ async def generate_lesson_quiz(
             lesson_id=lesson_id,
             num_questions=request.num_questions,
             difficulty=request.difficulty,
-            db=db
+            db=db,
+            include_answers=True
         )
     except json.JSONDecodeError:
         raise HTTPException(status_code=500, detail="Failed to parse quiz response")

@@ -72,6 +72,7 @@ async def send_message_stream(
     db: Annotated[AsyncSession, Depends(get_async_db)],
     session_factory: Annotated[async_sessionmaker, Depends(get_session_factory)]
 ):
+    print(request)
     result = await db.execute(
         select(ChatSession).where(ChatSession.id == session_id)
     )
@@ -106,6 +107,8 @@ async def send_message_stream(
     else:
         user_content = request.content
 
+    print(request)
+    print("CONTEXT:", context[:200] if context else "NO CONTEXT — lesson_id was not provided")
     # Build history
     result = await db.execute(
         select(ChatMessage)

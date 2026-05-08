@@ -13,16 +13,10 @@ async def execute_tool(tool_name: str, tool_args: dict, db: AsyncSession) -> str
             lesson_id=tool_args.get("lesson_id"),
             num_questions=tool_args.get("num_questions", 5),
             difficulty=tool_args.get("difficulty", "medium"),
-            db=db
+            db=db,
+            include_answers=False
         )
         return json.dumps(result)
-    
-    if tool_name == "lesson_summarizer":
-        result = await summarize_lesson(
-            lesson_id=tool_args.get("lesson_id"),
-            db=db
-        )
-        return json.dumps()
 
     return json.dumps({"error": f"Unknown tool: {tool_name}"})
 
