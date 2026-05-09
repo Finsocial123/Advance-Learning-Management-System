@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import {
   BookOpen,
+  BrainCircuit,
   HamIcon,
   LayoutDashboard,
   ListVideo,
@@ -48,6 +49,12 @@ const navItems: NavItem[] = [
     label: "My Courses",
     href: "/my-courses",
     icon: BookOpen,
+    roles: ["student"],
+  },
+  {
+    label: "Quiz Generator",
+    href: "/quiz-generator",
+    icon: BrainCircuit,
     roles: ["student"],
   },
   {
@@ -145,7 +152,7 @@ export default function Sidebar({ className,menu }: { className?: string ,menu:b
         {renderGroup(
           "Main",
           visible.filter((item) =>
-            ["/dashboard", "/profile", "/courses", "/my-courses"].includes(item.href),
+            ["/dashboard", "/profile", "/courses", "/my-courses", "/quiz-generator"].includes(item.href),
           ),
         )}
 

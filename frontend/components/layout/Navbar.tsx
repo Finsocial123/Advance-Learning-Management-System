@@ -24,13 +24,14 @@ export default function Navbar() {
   const logout = useAuthStore((state) => state.logout);
   const router = useRouter();
   const pathname = usePathname();
-  ``;
+
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [openmenu, setOpenmenu] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
     setMobileOpen(false);
+    setSidebarOpen(false);
     router.replace("/login");
   };
 
@@ -48,7 +49,12 @@ export default function Navbar() {
       icon: GraduationCap,
       roles: ["teacher", "admin"],
     },
-    { href: "/admin/users", label: "Users", icon: Shield, roles: ["admin"] },
+    {
+      href: "/admin/users",
+      label: "Users",
+      icon: Shield,
+      roles: ["admin"],
+    },
   ];
 
   const visibleLinks = navLinks.filter((link) => {
@@ -60,30 +66,42 @@ export default function Navbar() {
 
   return (
     <nav className="sticky top-0 z-40 w-full border-b border-slate-800/80 bg-[#07080d]/82 backdrop-blur-2xl">
-      <div className="mx-auto w-full  px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between gap-4">
-          <div className="flex gap-5">
-          {/* Hamburger Button */}
-          <button
-            onClick={() => setOpenmenu(!openmenu)}
-            className=" left-4 top-4 z-60 rounded-md bg-slate-900 p-2 text-white"
-          >
-            <Menu />
-          </button>
-            <Sidebar menu={openmenu} />
-          <Link href="/" className="group flex shrink-0 items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-br from-indigo-500 via-violet-500 to-sky-500 shadow-[0_14px_34px_-20px_rgba(99,102,241,0.95)] transition-transform group-hover:scale-105">
-              <BookOpen size={20} className="text-white" />
-            </div>
-            <div className="leading-none">
-              <span className="block text-lg font-bold tracking-tight text-white">
-                LearnHub
-              </span>
-              <span className="hidden text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500 sm:block">
-                Modern LMS
-              </span>
-            </div>
-          </Link>
+          <div className="flex items-center gap-5">
+            {isAuthenticated && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setSidebarOpen((value) => !value)}
+                  className="rounded-md bg-slate-900 p-2 text-white transition-colors hover:bg-slate-800"
+                  aria-label="Open sidebar"
+                >
+                  {sidebarOpen ? <X size={22} /> : <Menu size={22} />}
+                </button>
+
+                <Sidebar
+                  menu={sidebarOpen}
+                  onClose={() => setSidebarOpen(false)}
+                />
+              </>
+            )}
+
+            <Link href="/" className="group flex shrink-0 items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-br from-indigo-500 via-violet-500 to-sky-500 shadow-[0_14px_34px_-20px_rgba(99,102,241,0.95)] transition-transform group-hover:scale-105">
+                <BookOpen size={20} className="text-white" />
+              </div>
+
+              <div className="leading-none">
+                <span className="block text-lg font-bold tracking-tight text-white">
+                  LearnHub
+                </span>
+
+                <span className="hidden text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500 sm:block">
+                  Modern LMS
+                </span>
+              </div>
+            </Link>
           </div>
 
           <div className="hidden items-center gap-1 rounded-2xl border border-slate-800 bg-slate-950/45 p-1 md:flex">
@@ -91,6 +109,7 @@ export default function Navbar() {
               const active =
                 pathname === link.href ||
                 (link.href !== "/" && pathname.startsWith(link.href));
+
               return (
                 <Link
                   key={link.href}
@@ -99,7 +118,7 @@ export default function Navbar() {
                     "rounded-xl px-3.5 py-2 text-sm font-medium transition-colors",
                     active
                       ? "bg-slate-800 text-white shadow-sm"
-                      : "text-slate-400 hover:bg-slate-900 hover:text-slate-100",
+                      : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"
                   )}
                 >
                   {link.label}
@@ -125,10 +144,12 @@ export default function Navbar() {
                       {getInitials(user.name)}
                     </div>
                   )}
+
                   <div className="hidden min-w-0 text-left xl:block">
                     <p className="max-w-36 truncate text-xs font-semibold leading-none text-white">
                       {user.name}
                     </p>
+
                     <Badge
                       label={user.role}
                       variant="role"
@@ -136,7 +157,9 @@ export default function Navbar() {
                     />
                   </div>
                 </Link>
+
                 <button
+                  type="button"
                   onClick={handleLogout}
                   className="rounded-xl p-2 text-slate-500 transition-colors hover:bg-rose-500/10 hover:text-rose-300"
                   aria-label="Logout"
@@ -152,6 +175,7 @@ export default function Navbar() {
                 >
                   Login
                 </Link>
+
                 <Link
                   href="/register"
                   className="rounded-xl bg-white px-4 py-2 text-sm font-bold text-slate-950 transition-colors hover:bg-slate-200"
@@ -163,6 +187,7 @@ export default function Navbar() {
           </div>
 
           <button
+            type="button"
             className="rounded-xl p-2 text-slate-400 transition-colors hover:bg-slate-900 hover:text-white md:hidden"
             onClick={() => setMobileOpen((open) => !open)}
             aria-label="Open navigation"
@@ -179,6 +204,7 @@ export default function Navbar() {
               const active =
                 pathname === link.href ||
                 (link.href !== "/" && pathname.startsWith(link.href));
+
               return (
                 <Link
                   key={link.href}
@@ -188,7 +214,7 @@ export default function Navbar() {
                     "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition-colors",
                     active
                       ? "bg-slate-800 text-white"
-                      : "text-slate-300 hover:bg-slate-900 hover:text-white",
+                      : "text-slate-300 hover:bg-slate-900 hover:text-white"
                   )}
                 >
                   <link.icon size={18} /> {link.label}
@@ -196,8 +222,10 @@ export default function Navbar() {
               );
             })}
           </div>
+
           {isAuthenticated && user ? (
             <button
+              type="button"
               onClick={handleLogout}
               className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-rose-400/25 bg-rose-500/10 py-3 text-sm font-semibold text-rose-200"
             >
@@ -212,6 +240,7 @@ export default function Navbar() {
               >
                 Login
               </Link>
+
               <Link
                 href="/register"
                 onClick={() => setMobileOpen(false)}
