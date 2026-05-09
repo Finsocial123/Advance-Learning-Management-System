@@ -1,5 +1,7 @@
 from sqlalchemy import Column, Integer, String, Boolean, Text
 from app.core.database import Base
+from sqlalchemy.orm import relationship
+
 
 
 class User(Base):
@@ -8,7 +10,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
     email = Column(String(255), unique=True, index=True, nullable=False)
-
+    chat_sessions = relationship("ChatSession", back_populates="user", cascade="all, delete-orphan")
     # Nullable because Google-only users may not have a local password.
     hashed_password = Column(String(255), nullable=True)
 

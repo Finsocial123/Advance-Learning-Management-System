@@ -18,6 +18,7 @@ yarn-error.log*
 venv/
 __pycache__/
 *.pyc
+tasks.txt
 
 # Database / local files
 *.sqlite3

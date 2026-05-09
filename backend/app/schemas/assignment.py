@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Literal
 from datetime import datetime
 
 
@@ -25,3 +25,8 @@ class AssignmentOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class QuizRequest(BaseModel):
+    num_questions: int = 5
+    difficulty: Literal["easy", "medium", "hard"] = "medium"

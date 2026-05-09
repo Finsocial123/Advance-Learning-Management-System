@@ -67,6 +67,21 @@ export interface LessonProgressItem {
   order: number;
   completed: boolean;
   completed_at: string | null;
+  has_video?: boolean;
+  has_trackable_video?: boolean;
+  watched_seconds?: number;
+  video_duration_seconds?: number;
+  required_watch_seconds?: number;
+  watch_percentage?: number;
+  can_mark_complete?: boolean;
+}
+
+export interface VideoWatchProgress {
+  watched_seconds: number;
+  video_duration_seconds: number;
+  required_watch_seconds: number;
+  watch_percentage: number;
+  can_mark_complete: boolean;
 }
 
 export interface CourseProgress {
@@ -75,6 +90,68 @@ export interface CourseProgress {
   total_lessons: number;
   completed_lessons: number;
   lessons: LessonProgressItem[];
+}
+
+// ---------- Admin user management types ----------
+
+export interface AdminUserListItem extends User {
+  total_courses?: number;
+  total_enrolled_courses?: number;
+  average_progress?: number;
+}
+
+export interface PaginatedUsersResponse {
+  items: AdminUserListItem[];
+  total: number;
+  page: number;
+  limit: number;
+  total_pages: number;
+}
+
+export interface TeacherCourseReport {
+  id: number;
+  title: string;
+  description: string | null;
+  thumbnail_url: string | null;
+  total_lessons: number;
+  total_enrolled_students: number;
+  created_at: string;
+}
+
+export interface TeacherReport {
+  total_courses: number;
+  courses: TeacherCourseReport[];
+}
+
+export interface StudentLessonProgressReport {
+  lesson_id: number;
+  title: string;
+  order: number;
+  completed: boolean;
+  completed_at: string | null;
+}
+
+export interface StudentCourseProgressReport {
+  course_id: number;
+  course_title: string;
+  teacher_name: string;
+  progress: number;
+  total_lessons: number;
+  completed_lessons: number;
+  pending_lessons: number;
+  lessons: StudentLessonProgressReport[];
+}
+
+export interface StudentReport {
+  total_enrolled_courses: number;
+  average_progress: number;
+  courses: StudentCourseProgressReport[];
+}
+
+export interface AdminUserDetails {
+  user: User;
+  teacher_report: TeacherReport | null;
+  student_report: StudentReport | null;
 }
 
 // ---------- Dashboard types ----------
@@ -140,11 +217,42 @@ export interface StudentDashboardData {
 }
 
 export interface EnrolledStudent {
+  enrollment_id?: number;
   student_id: number;
   student_name: string;
   student_email: string;
   progress: number;
+  total_lessons?: number;
+  completed_lessons?: number;
+  pending_lessons?: number;
   enrolled_at: string;
+  lessons?: CourseStudentLessonProgress[];
+}
+
+export interface CourseStudentLessonProgress {
+  lesson_id: number;
+  title: string;
+  order: number;
+  completed: boolean;
+  completed_at: string | null;
+  has_video: boolean;
+  watched_seconds: number;
+  video_duration_seconds: number;
+}
+
+export interface CourseStudentProgressReport extends EnrolledStudent {
+  enrollment_id: number;
+  total_lessons: number;
+  completed_lessons: number;
+  pending_lessons: number;
+  lessons: CourseStudentLessonProgress[];
+}
+
+export interface CourseStudentsProgressResponse {
+  course: Course;
+  total_students: number;
+  average_progress: number;
+  students: CourseStudentProgressReport[];
 }
 
 export interface TokenResponse {

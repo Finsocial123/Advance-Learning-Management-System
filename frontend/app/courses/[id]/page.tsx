@@ -11,6 +11,7 @@ import {
   FileText,
   ClipboardList,
   Lock,
+  Users,
 } from "lucide-react";
 import { courseService } from "@/services/course.service";
 import { lessonService } from "@/services/lesson.service";
@@ -99,8 +100,6 @@ export default function CourseDetailPage() {
   if (!course) return null;
 
   const isOwner = user?.role === "admin" || user?.id === course.teacher_id;
-  const isTeacherOrAdmin = user?.role === "admin" || user?.role === "teacher";
-
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       {/* header */}
@@ -182,6 +181,15 @@ export default function CourseDetailPage() {
                   }
                 >
                   Edit Course
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() =>
+                    router.push(`/teacher/courses/${courseId}/students`)
+                  }
+                >
+                  <Users size={16} />
+                  Student Report
                 </Button>
                 <Button
                   variant="secondary"
