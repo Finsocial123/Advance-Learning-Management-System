@@ -264,3 +264,46 @@ export interface TokenResponse {
   email: string;
   avatar_url: string | null;
 }
+
+// ---------- AI Quiz Generator types ----------
+
+export type QuizDifficulty = "easy" | "medium" | "hard";
+export type QuizOptionKey = "A" | "B" | "C" | "D";
+
+export interface QuizLesson {
+  lesson_id: number;
+  title: string;
+  description: string | null;
+  order: number;
+  has_quiz_content: boolean;
+}
+
+export interface QuizCourse {
+  course_id: number;
+  course_title: string;
+  teacher_name: string | null;
+  progress: number;
+  enrolled_at: string;
+  lessons: QuizLesson[];
+}
+
+export interface QuizGeneratePayload {
+  course_id: number;
+  lesson_id: number;
+  num_questions: number;
+  difficulty: QuizDifficulty;
+}
+
+export interface QuizQuestion {
+  question_number: number;
+  question: string;
+  options: Record<QuizOptionKey, string>;
+  correct_answer: QuizOptionKey;
+  explanation: string;
+}
+
+export interface QuizResponse {
+  lesson_id: number;
+  difficulty: QuizDifficulty;
+  questions: QuizQuestion[];
+}
