@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Toaster } from "react-hot-toast";
 import Navbar from "@/components/layout/Navbar";
-import Sidebar from "@/components/layout/Sidebar";
 import AppProviders from "@/components/providers/AppProviders";
 import "./globals.css";
 
@@ -16,10 +15,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen antialiased">
         <AppProviders>
           <Navbar />
-          <div className="mx-auto flex w-full  gap-5 ">
-            {/* <Sidebar className="hidden lg:flex sticky top-24 h-[calc(100vh-7rem)]" /> */}
-            <main className="min-w-0 flex-1  ">{children}</main>
+
+          <div className="mx-auto flex w-full">
+            <main className="min-w-0 flex-1">{children}</main>
           </div>
+
           <Toaster
             position="top-right"
             toastOptions={{
