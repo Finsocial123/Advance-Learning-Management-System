@@ -9,7 +9,7 @@ class Enrollment(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    student_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    student_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
 
     progress = Column(Float, default=0.0, nullable=False)
