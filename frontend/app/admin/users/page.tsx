@@ -260,13 +260,13 @@ export default function AdminUsersPage() {
                           </Button>
 
                           {/* delete */}
-                          <Button
+                          {/* <Button
                             size="sm"
                             variant="danger"
                             onClick={() => setDeleteModal(u)}
                           >
                             <Trash2 size={13} />
-                          </Button>
+                          </Button> */}
                         </>
                       )}
                     </div>
