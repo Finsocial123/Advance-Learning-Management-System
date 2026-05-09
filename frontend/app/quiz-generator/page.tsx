@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import {
@@ -32,6 +32,9 @@ import type {
 
 const optionKeys: QuizOptionKey[] = ["A", "B", "C", "D"];
 
+const QUESTION_COUNT_OPTIONS = [5, 10, 15, 20];
+const DEFAULT_QUESTION_COUNT = 5;
+
 export default function QuizGeneratorPage() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
@@ -43,11 +46,13 @@ export default function QuizGeneratorPage() {
   const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
   const [selectedLessonId, setSelectedLessonId] = useState<number | null>(null);
   const [difficulty, setDifficulty] = useState<QuizDifficulty>("medium");
-  const [numQuestions, setNumQuestions] = useState(5);
+  const [numQuestions, setNumQuestions] = useState(DEFAULT_QUESTION_COUNT);
   const [quiz, setQuiz] = useState<QuizResponse | null>(null);
   const [answers, setAnswers] = useState<Record<number, QuizOptionKey>>({});
   const [submitted, setSubmitted] = useState(false);
   const [generating, setGenerating] = useState(false);
+
+  const generateBoxRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!hasHydrated) return;
@@ -70,13 +75,15 @@ export default function QuizGeneratorPage() {
         setLoadingCourses(true);
 
         const enrollments = await enrollmentService.getMyEnrollments();
+
         const mappedCourses = await Promise.all(
           enrollments.map(async (enrollment) => {
             const lessons = await lessonService.getByCourse(enrollment.course_id);
 
             return {
               course_id: enrollment.course_id,
-              course_title: enrollment.course_title ?? `Course #${enrollment.course_id}`,
+              course_title:
+                enrollment.course_title ?? `Course #${enrollment.course_id}`,
               teacher_name: enrollment.teacher_name,
               progress: enrollment.progress,
               enrolled_at: enrollment.enrolled_at,
@@ -87,8 +94,6 @@ export default function QuizGeneratorPage() {
                   title: lesson.title,
                   description: lesson.description,
                   order: lesson.order,
-                  // Existing backend can generate only when lesson chunks exist.
-                  // PDF/video lessons are most likely to have chunks; backend still validates this.
                   has_quiz_content: Boolean(lesson.pdf_url || lesson.video_url),
                 })),
             };
@@ -97,8 +102,14 @@ export default function QuizGeneratorPage() {
 
         setCourses(mappedCourses);
 
-        const firstCourse = mappedCourses.find((course) => course.lessons.length > 0) ?? mappedCourses[0];
-        const firstReadyLesson = firstCourse?.lessons.find((lesson) => lesson.has_quiz_content);
+        const firstCourse =
+          mappedCourses.find((course) => course.lessons.length > 0) ??
+          mappedCourses[0];
+
+        const firstReadyLesson = firstCourse?.lessons.find(
+          (lesson) => lesson.has_quiz_content,
+        );
+
         const firstLesson = firstReadyLesson ?? firstCourse?.lessons[0];
 
         setSelectedCourseId(firstCourse?.course_id ?? null);
@@ -120,25 +131,35 @@ export default function QuizGeneratorPage() {
 
   const selectedLesson = useMemo(
     () =>
-      selectedCourse?.lessons.find((lesson) => lesson.lesson_id === selectedLessonId) ??
-      null,
+      selectedCourse?.lessons.find(
+        (lesson) => lesson.lesson_id === selectedLessonId,
+      ) ?? null,
     [selectedCourse, selectedLessonId],
   );
 
   const answeredCount = useMemo(
-    () => quiz?.questions.filter((question) => answers[question.question_number]).length ?? 0,
+    () =>
+      quiz?.questions.filter((question) => answers[question.question_number])
+        .length ?? 0,
     [answers, quiz],
   );
 
   const score = useMemo(() => {
     if (!quiz) return 0;
+
     return quiz.questions.reduce((total, question) => {
-      return total + (answers[question.question_number] === question.correct_answer ? 1 : 0);
+      return (
+        total +
+        (answers[question.question_number] === question.correct_answer ? 1 : 0)
+      );
     }, 0);
   }, [answers, quiz]);
 
   const handleCourseSelect = (course: QuizCourse) => {
-    const firstReadyLesson = course.lessons.find((lesson) => lesson.has_quiz_content);
+    const firstReadyLesson = course.lessons.find(
+      (lesson) => lesson.has_quiz_content,
+    );
+
     const firstLesson = firstReadyLesson ?? course.lessons[0];
 
     setSelectedCourseId(course.course_id);
@@ -164,7 +185,9 @@ export default function QuizGeneratorPage() {
     }
 
     if (!selectedLesson?.has_quiz_content) {
-      toast.error("This lesson needs PDF/video transcript content before quiz generation");
+      toast.error(
+        "This lesson needs PDF/video transcript content before quiz generation",
+      );
       return;
     }
 
@@ -172,12 +195,14 @@ export default function QuizGeneratorPage() {
       setGenerating(true);
       setSubmitted(false);
       setAnswers({});
+
       const data = await quizService.generateQuiz({
         course_id: selectedCourseId,
         lesson_id: selectedLessonId,
         difficulty,
         num_questions: numQuestions,
       });
+
       setQuiz(data);
       toast.success("Quiz generated successfully");
     } catch (error) {
@@ -189,16 +214,29 @@ export default function QuizGeneratorPage() {
 
   const handleAnswer = (questionNumber: number, option: QuizOptionKey) => {
     if (submitted) return;
-    setAnswers((current) => ({ ...current, [questionNumber]: option }));
+
+    setAnswers((current) => ({
+      ...current,
+      [questionNumber]: option,
+    }));
   };
 
   const handleSubmit = () => {
     if (!quiz) return;
+
     if (answeredCount < quiz.questions.length) {
       toast.error("Answer all questions before submitting");
       return;
     }
+
     setSubmitted(true);
+
+    setTimeout(() => {
+      generateBoxRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 100);
   };
 
   if (!hasHydrated || (!isAuthenticated && !user)) {
@@ -210,30 +248,37 @@ export default function QuizGeneratorPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <section className="mb-6 overflow-hidden rounded-3xl border border-indigo-400/20 bg-linear-to-br from-slate-950 via-slate-900 to-indigo-950/50 p-6 shadow-2xl shadow-black/30">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+    <main className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
+      <section className="mb-5 overflow-hidden rounded-3xl border border-indigo-400/20 bg-linear-to-br from-slate-950 via-slate-900 to-indigo-950/50 p-5 shadow-xl shadow-black/25">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-indigo-400/20 bg-indigo-500/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-indigo-200">
-              <BrainCircuit size={15} /> AI Practice
+            <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-indigo-400/20 bg-indigo-500/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-indigo-200">
+              <BrainCircuit size={14} /> AI Practice
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+
+            <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
               AI Quiz Generator
             </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
-              Pick one of your enrolled course lessons, generate MCQs from uploaded PDF or
-              video transcript content, then submit to check your score instantly.
+
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+              Pick one of your enrolled course lessons, generate MCQs from uploaded
+              PDF or video transcript content, then submit to check your score
+              instantly.
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 rounded-2xl border border-slate-800 bg-slate-950/50 p-3 text-center sm:min-w-72">
-            <div className="rounded-xl bg-slate-900/70 p-4">
-              <p className="text-2xl font-bold text-white">{courses.length}</p>
+          <div className="grid grid-cols-2 gap-3 rounded-2xl border border-slate-800 bg-slate-950/50 p-2 text-center sm:min-w-64">
+            <div className="rounded-xl bg-slate-900/70 p-3">
+              <p className="text-xl font-bold text-white">{courses.length}</p>
               <p className="text-xs text-slate-500">Enrolled courses</p>
             </div>
-            <div className="rounded-xl bg-slate-900/70 p-4">
-              <p className="text-2xl font-bold text-white">
-                {courses.reduce((total, course) => total + course.lessons.length, 0)}
+
+            <div className="rounded-xl bg-slate-900/70 p-3">
+              <p className="text-xl font-bold text-white">
+                {courses.reduce(
+                  (total, course) => total + course.lessons.length,
+                  0,
+                )}
               </p>
               <p className="text-xs text-slate-500">Available lessons</p>
             </div>
@@ -257,15 +302,17 @@ export default function QuizGeneratorPage() {
           onAction={() => router.push("/courses")}
         />
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[390px_minmax(0,1fr)]">
-          <aside className="space-y-5 rounded-3xl border border-slate-800 bg-slate-950/60 p-4 shadow-xl shadow-black/20 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto">
+        <div className="grid gap-5 lg:grid-cols-[390px_minmax(0,1fr)]">
+          <aside className="space-y-5 rounded-3xl border border-slate-800 bg-slate-950/60 p-4 shadow-xl shadow-black/20 lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
             <div>
               <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-white">
                 <BookOpenCheck size={19} /> Choose course
               </h2>
+
               <div className="space-y-2">
                 {courses.map((course) => {
                   const active = course.course_id === selectedCourseId;
+
                   return (
                     <button
                       key={course.course_id}
@@ -278,14 +325,22 @@ export default function QuizGeneratorPage() {
                           : "border-slate-800 bg-slate-900/40 hover:border-slate-700 hover:bg-slate-900/80",
                       )}
                     >
-                      <p className="line-clamp-2 font-semibold text-white">{course.course_title}</p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        {course.teacher_name ? `By ${course.teacher_name}` : "Teacher not available"}
+                      <p className="line-clamp-2 font-semibold text-white">
+                        {course.course_title}
                       </p>
+
+                      <p className="mt-1 text-xs text-slate-500">
+                        {course.teacher_name
+                          ? `By ${course.teacher_name}`
+                          : "Teacher not available"}
+                      </p>
+
                       <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-800">
                         <div
                           className="h-full rounded-full bg-indigo-400"
-                          style={{ width: `${Math.min(course.progress, 100)}%` }}
+                          style={{
+                            width: `${Math.min(course.progress, 100)}%`,
+                          }}
                         />
                       </div>
                     </button>
@@ -307,6 +362,7 @@ export default function QuizGeneratorPage() {
                 <div className="space-y-2">
                   {selectedCourse.lessons.map((lesson) => {
                     const active = lesson.lesson_id === selectedLessonId;
+
                     return (
                       <button
                         key={lesson.lesson_id}
@@ -323,14 +379,18 @@ export default function QuizGeneratorPage() {
                           <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-950 text-xs font-bold text-slate-300">
                             {lesson.order || lesson.lesson_id}
                           </span>
+
                           <div className="min-w-0 flex-1">
                             <p className="line-clamp-2 text-sm font-semibold text-white">
                               {lesson.title}
                             </p>
+
                             <p
                               className={cn(
                                 "mt-1 inline-flex items-center gap-1 text-xs",
-                                lesson.has_quiz_content ? "text-emerald-300" : "text-amber-300",
+                                lesson.has_quiz_content
+                                  ? "text-emerald-300"
+                                  : "text-amber-300",
                               )}
                             >
                               {lesson.has_quiz_content ? (
@@ -338,7 +398,10 @@ export default function QuizGeneratorPage() {
                               ) : (
                                 <Lock size={13} />
                               )}
-                              {lesson.has_quiz_content ? "Ready for quiz" : "Needs PDF/video content"}
+
+                              {lesson.has_quiz_content
+                                ? "Ready for quiz"
+                                : "Needs PDF/video content"}
                             </p>
                           </div>
                         </div>
@@ -351,13 +414,22 @@ export default function QuizGeneratorPage() {
           </aside>
 
           <section className="space-y-5">
-            <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5 shadow-xl shadow-black/20">
+            <div
+              ref={generateBoxRef}
+              className="scroll-mt-20 rounded-3xl border border-slate-800 bg-slate-950/60 p-5 shadow-xl shadow-black/20"
+            >
               <div className="grid gap-4 md:grid-cols-[1fr_170px_170px] md:items-end">
                 <div>
-                  <h2 className="text-xl font-semibold text-white">Generate quiz</h2>
+                  <h2 className="text-xl font-semibold text-white">
+                    Generate quiz
+                  </h2>
+
                   <p className="mt-2 text-sm leading-6 text-slate-400">
-                    Selected lesson: {selectedLesson ? (
-                      <span className="font-semibold text-slate-200">{selectedLesson.title}</span>
+                    Selected lesson:{" "}
+                    {selectedLesson ? (
+                      <span className="font-semibold text-slate-200">
+                        {selectedLesson.title}
+                      </span>
                     ) : (
                       <span className="text-amber-300">No lesson selected</span>
                     )}
@@ -368,9 +440,12 @@ export default function QuizGeneratorPage() {
                   <span className="mb-2 block text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
                     Difficulty
                   </span>
+
                   <select
                     value={difficulty}
-                    onChange={(event) => setDifficulty(event.target.value as QuizDifficulty)}
+                    onChange={(event) =>
+                      setDifficulty(event.target.value as QuizDifficulty)
+                    }
                     className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30"
                   >
                     {QUIZ_DIFFICULTIES.map((item) => (
@@ -385,12 +460,15 @@ export default function QuizGeneratorPage() {
                   <span className="mb-2 block text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
                     Questions
                   </span>
+
                   <select
                     value={numQuestions}
-                    onChange={(event) => setNumQuestions(Number(event.target.value))}
+                    onChange={(event) =>
+                      setNumQuestions(Number(event.target.value))
+                    }
                     className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30"
                   >
-                    {[3, 5, 7, 10].map((count) => (
+                    {QUESTION_COUNT_OPTIONS.map((count) => (
                       <option key={count} value={count}>
                         {count} questions
                       </option>
@@ -406,8 +484,10 @@ export default function QuizGeneratorPage() {
                   loading={generating}
                   disabled={!selectedLesson?.has_quiz_content}
                 >
-                  <Sparkles size={17} /> Generate Quiz
+                  <Sparkles size={17} />{" "}
+                  {quiz ? "Generate Again" : "Generate Quiz"}
                 </Button>
+
                 {quiz && (
                   <Button type="button" variant="outline" onClick={resetQuiz}>
                     Clear Quiz
@@ -421,9 +501,14 @@ export default function QuizGeneratorPage() {
                 <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-indigo-400/20 bg-indigo-500/10 text-indigo-200">
                   <BrainCircuit size={28} />
                 </div>
-                <h3 className="text-lg font-semibold text-white">Your quiz will appear here</h3>
+
+                <h3 className="text-lg font-semibold text-white">
+                  Your quiz will appear here
+                </h3>
+
                 <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-400">
-                  Choose a lesson marked “Ready for quiz”, select difficulty, then generate your practice MCQ quiz.
+                  Choose a lesson marked “Ready for quiz”, select difficulty, then
+                  generate your practice MCQ quiz.
                 </p>
               </div>
             ) : (
@@ -469,23 +554,32 @@ function QuizView({
   onRegenerate,
   generating,
 }: QuizViewProps) {
+  const percentage = quiz.questions.length
+    ? Math.round((score / quiz.questions.length) * 100)
+    : 0;
+
   return (
     <div className="space-y-5" aria-live="polite">
       <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-xl font-semibold text-white">Generated quiz</h2>
+
             <p className="mt-1 text-sm text-slate-400">
-              {answeredCount}/{quiz.questions.length} answered · {quiz.difficulty} level
+              {answeredCount}/{quiz.questions.length} answered ·{" "}
+              {quiz.difficulty} level
             </p>
           </div>
 
           {submitted && (
             <div className="rounded-2xl border border-emerald-400/25 bg-emerald-500/10 px-5 py-3 text-center">
               <p className="text-2xl font-bold text-emerald-200">
-                {score}/{quiz.questions.length}
+                {percentage}%
               </p>
-              <p className="text-xs text-emerald-300/80">Your score</p>
+
+              <p className="text-xs text-emerald-300/80">
+                {score}/{quiz.questions.length} correct
+              </p>
             </div>
           )}
         </div>
@@ -503,7 +597,11 @@ function QuizView({
 
       <div className="flex flex-wrap gap-3 rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
         {!submitted ? (
-          <Button type="button" onClick={onSubmit} disabled={answeredCount < quiz.questions.length}>
+          <Button
+            type="button"
+            onClick={onSubmit}
+            disabled={answeredCount < quiz.questions.length}
+          >
             Submit Answers
           </Button>
         ) : (
@@ -523,7 +621,12 @@ interface QuestionCardProps {
   onAnswer: (questionNumber: number, option: QuizOptionKey) => void;
 }
 
-function QuestionCard({ question, selected, submitted, onAnswer }: QuestionCardProps) {
+function QuestionCard({
+  question,
+  selected,
+  submitted,
+  onAnswer,
+}: QuestionCardProps) {
   return (
     <fieldset className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
       <legend className="sr-only">Question {question.question_number}</legend>
@@ -532,6 +635,7 @@ function QuestionCard({ question, selected, submitted, onAnswer }: QuestionCardP
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-500/15 text-sm font-bold text-indigo-200">
           {question.question_number}
         </span>
+
         <h3 className="pt-1 text-base font-semibold leading-7 text-white">
           {question.question}
         </h3>
@@ -541,7 +645,8 @@ function QuestionCard({ question, selected, submitted, onAnswer }: QuestionCardP
         {optionKeys.map((key) => {
           const isSelected = selected === key;
           const isCorrect = submitted && question.correct_answer === key;
-          const isWrongSelection = submitted && isSelected && question.correct_answer !== key;
+          const isWrongSelection =
+            submitted && isSelected && question.correct_answer !== key;
 
           return (
             <label
@@ -568,12 +673,25 @@ function QuestionCard({ question, selected, submitted, onAnswer }: QuestionCardP
                 onChange={() => onAnswer(question.question_number, key)}
                 className="mt-1 h-4 w-4 accent-indigo-500"
               />
+
               <span className="flex-1 text-sm leading-6 text-slate-200">
                 <span className="mr-2 font-bold text-slate-400">{key}.</span>
                 {question.options[key]}
               </span>
-              {isCorrect && <CheckCircle2 className="mt-0.5 shrink-0 text-emerald-300" size={18} />}
-              {isWrongSelection && <XCircle className="mt-0.5 shrink-0 text-rose-300" size={18} />}
+
+              {isCorrect && (
+                <CheckCircle2
+                  className="mt-0.5 shrink-0 text-emerald-300"
+                  size={18}
+                />
+              )}
+
+              {isWrongSelection && (
+                <XCircle
+                  className="mt-0.5 shrink-0 text-rose-300"
+                  size={18}
+                />
+              )}
             </label>
           );
         })}
