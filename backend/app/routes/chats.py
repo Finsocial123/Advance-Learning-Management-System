@@ -91,6 +91,15 @@ async def send_message_stream(
     db.add(user_msg)
     await db.commit()
 
+    #intercept summary and quiz before RAG and LLM
+    BLOCK_KEYWORDS = ["summarize", "summary", "overview", "key points", "summarise", "quiz"]
+    if any (kw in request.content.lower() for kw in BLOCK_KEYWORDS):
+        async def redirect_generator():
+            msg = "Use the **Summary** and **Quiz** feature for this lesson to get a full structured summary and quiz respectively. I'm here to answer specific questions about the lesson content!"
+            yield f"data: {json.dumps({"token": msg})}\n\n"
+            yield f"data: {json.dumps({"status": "done"})}\n\n"
+        return StreamingResponse(redirect_generator(), media_type="text/event-stream")
+
     # RAG pipeline
     context = None
     if request.lesson_id is not None:
