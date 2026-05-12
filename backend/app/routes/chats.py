@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from app.core.config import MODEL
 
 from app.core.database import get_async_db, get_db, get_session_factory
 from app.client import client
@@ -162,10 +163,13 @@ async def send_message_stream(
     async def event_generator():
         async with session_factory() as gen_db:
             try:
+                # build tools list base on web search toggle
+                active_tools = TOOLS if request.web_search else []
+
                 first_response = await client.chat.completions.create(
-                    model=request.model,
+                    model=MODEL,
                     messages=messages,
-                    **({"tools": TOOLS, "tool_choice": "auto"} if TOOLS else {}),
+                    **({"tools": active_tools, "tool_choice": "auto"} if TOOLS else {}),
                     stream=False
                 )
 
@@ -210,7 +214,7 @@ async def send_message_stream(
                     ]
 
                     final_stream = await client.chat.completions.create(
-                        model=request.model,
+                        model=MODEL,
                         messages=messages_with_result,
                         stream=True
                     )
@@ -244,7 +248,7 @@ async def send_message_stream(
                     # yield f"{token}"
                 else:
                     stream = await client.chat.completions.create(
-                        model=request.model,
+                        model=MODEL,
                         messages=messages,
                         stream=True
                     )

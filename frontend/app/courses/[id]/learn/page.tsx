@@ -23,6 +23,7 @@ import {
   Sparkles,
   Minimize2,
   Maximize2,
+  Globe,
 } from "lucide-react";
 
 import { lessonService } from "@/services/lesson.service";
@@ -141,6 +142,7 @@ function ChatPanel({
   const [panelTab, setPanelTab] = useState<"chat" | "history">("chat");
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [webSearchEnabled, setWebSearchEnabled] = useState(false); //toggle internet search
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -178,7 +180,7 @@ function ChatPanel({
           role: m.role as "user" | "assistant",
           content: m.content || "",
           timestamp: new Date(m.created_at),
-        }))
+        })),
       );
       setPanelTab("chat");
     } catch (err) {
@@ -250,6 +252,7 @@ function ChatPanel({
         model: "openrouter/free",
         content: userMsg.content,
         lesson_id: lessonId,
+        web_search: webSearchEnabled,
       };
 
       const res = await fetch(
@@ -261,7 +264,7 @@ function ChatPanel({
             Accept: "text/event-stream",
           },
           body: JSON.stringify(payload),
-        }
+        },
       );
 
       if (!res.ok) throw new Error("Chat request failed");
@@ -448,6 +451,31 @@ function ChatPanel({
                 className="flex-1 bg-transparent text-sm text-zinc-200 placeholder:text-zinc-600 resize-none outline-none max-h-24 scrollbar-thin py-0.5"
                 style={{ fieldSizing: "content" } as React.CSSProperties}
               />
+
+              {/* Web search toggle */}
+              <div className="relative group">
+                <button
+                  onClick={() => setWebSearchEnabled(!webSearchEnabled)}
+                  className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 transition-all ${
+                    webSearchEnabled
+                      ? "bg-violet-500/70 text-white border border-violet-400/50"
+                      : "bg-white/5 text-zinc-400 border border-white/10 hover:bg-white/10"
+                  }`}
+                  // title={
+                  //   webSearchEnabled ? "Web search enabled" : "Enable web search"
+                  // }
+                >
+                  <Globe size={13} />
+                </button>
+
+                {/*tooltip for web search on hover*/}
+
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-zinc-800 text-zinc-200 text-[10px] font-medium rounded-md whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow-lg border border-white/10">
+                  {webSearchEnabled
+                    ? "Disable web search"
+                    : "Enable web search"}
+                </div>
+              </div>
               <button
                 onClick={sendMessage}
                 disabled={!input.trim() || loading}
