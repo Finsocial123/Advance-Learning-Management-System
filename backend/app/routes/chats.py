@@ -49,6 +49,31 @@ async def get_sessions(user_id: int, db:Annotated[AsyncSession, Depends(get_asyn
     sessions = result.scalars().all()
     return sessions
 
+# Delete a session
+@router.delete("sessions/{session_id}")
+async def delete_session(
+    session_id: str,
+    db: Annotated[AsyncSession, Depends(get_async_db)]
+):
+    result = await db.execute(
+        select(ChatSession).where(ChatSession.id == session_id)
+    )
+    session = result.scalars().first()
+    
+    if not session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+    
+    # Delete associated messages first
+    await db.execute(
+        ChatMessage.__table__.delete().where(ChatMessage.session_id == session_id)
+    )
+    
+    # Delete the session
+    await db.delete(session)
+    await db.commit()
+    
+    return {"message": "Session deleted successfully"}
+
 
 # Get all messages from a session
 @router.get("/{session_id}/messages")
