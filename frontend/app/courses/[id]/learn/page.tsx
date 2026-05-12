@@ -29,6 +29,7 @@ import {
 import { lessonService } from "@/services/lesson.service";
 import { progressService } from "@/services/progress.service";
 import { assignmentService } from "@/services/assignment.service";
+import { chatService, ChatSession } from "@/services/chat.service";
 import { useAuthStore } from "@/store/authStore";
 
 import {
@@ -138,6 +139,9 @@ function ChatPanel({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [panelTab, setPanelTab] = useState<"chat" | "history">("chat");
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [webSearchEnabled, setWebSearchEnabled] = useState(false); //toggle internet search
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -152,29 +156,76 @@ function ChatPanel({
     };
   }, []);
 
-  useEffect(() => {
-    if (!lessonId) return;
-    const createSession = async () => {
-      const res = await fetch(`${API_URL}/sessions/${userId}/sessions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: userId, lesson_id: lessonId }),
-      });
-      const { id } = await res.json();
+  const loadSessions = async () => {
+    try {
+      setHistoryLoading(true);
+      const data = await chatService.getSessions(userId);
+      setSessions(data);
+    } catch (err) {
+      console.error("Failed to load sessions:", err);
+      toast.error("Failed to load chat history");
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const loadSessionMessages = async (id: string) => {
+    try {
+      setLoading(true);
+      const msgs = await chatService.getMessages(id);
       setSessionId(id);
-    };
-    createSession();
-  }, [lessonId, userId]);
+      setMessages(
+        msgs.map((m) => ({
+          id: String(m.id),
+          role: m.role as "user" | "assistant",
+          content: m.content || "",
+          timestamp: new Date(m.created_at),
+        })),
+      );
+      setPanelTab("chat");
+    } catch (err) {
+      console.error("Failed to load messages:", err);
+      toast.error("Failed to load chat messages");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleHistoryTabClick = () => {
+    setPanelTab("history");
+    if (sessions.length === 0) {
+      loadSessions();
+    }
+  };
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (panelTab === "chat") {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [
     messages,
+    panelTab,
     messages.length > 0 ? messages[messages.length - 1]?.content : null,
   ]);
 
   const sendMessage = async () => {
-    if (!input.trim() || loading || !sessionId) return;
+    if (!input.trim() || loading) return;
+
+    // Create session on first message if it doesn't exist
+    let currentSessionId = sessionId;
+    if (!currentSessionId) {
+      try {
+        setLoading(true);
+        const session = await chatService.createSession(userId);
+        currentSessionId = session.id;
+        setSessionId(session.id);
+        setLoading(false);
+      } catch (err) {
+        console.error("Failed to create session:", err);
+        toast.error("Failed to create chat session");
+        return;
+      }
+    }
 
     const userMsg: ChatMessage = {
       id: crypto.randomUUID(),
@@ -204,15 +255,17 @@ function ChatPanel({
         web_search: webSearchEnabled,
       };
 
-      const res = await fetch(`${API_URL}/sessions/${sessionId}/messages`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "text/event-stream",
+      const res = await fetch(
+        `${API_URL || "http://localhost:8000"}/sessions/${currentSessionId}/messages`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "text/event-stream",
+          },
+          body: JSON.stringify(payload),
         },
-        body: JSON.stringify(payload),
-      });
-      console.log(payload);
+      );
 
       if (!res.ok) throw new Error("Chat request failed");
       if (!res.body) throw new Error("No response body");
@@ -281,123 +334,209 @@ function ChatPanel({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 scrollbar-thin">
-        {messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full gap-3 text-center py-8">
-            <div className="w-12 h-12 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
-              <Bot size={22} className="text-violet-400" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-zinc-300">
-                AI Lesson Assistant
-              </p>
-              <p className="text-xs text-zinc-500 mt-1 max-w-48">
-                Ask anything about this lesson. I'm here to help.
-              </p>
-            </div>
+      {/* Tabs */}
+      <div className="flex border-b border-white/8 shrink-0">
+        <button
+          onClick={() => setPanelTab("chat")}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs transition-colors ${
+            panelTab === "chat"
+              ? "text-violet-400 border-b-2 border-violet-500"
+              : "text-zinc-500 hover:text-zinc-300"
+          }`}
+        >
+          <MessageSquare size={12} />
+          Chat
+        </button>
+        <button
+          onClick={handleHistoryTabClick}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs transition-colors ${
+            panelTab === "history"
+              ? "text-violet-400 border-b-2 border-violet-500"
+              : "text-zinc-500 hover:text-zinc-300"
+          }`}
+        >
+          <FileText size={12} />
+          History
+        </button>
+      </div>
 
-            <div className="flex flex-col gap-2 w-full mt-2">
-              {[
-                "Summarize this lesson",
-                "Quiz me on this topic",
-                "Explain a concept simply",
-              ].map((suggestion) => (
-                <button
-                  key={suggestion}
-                  onClick={() => setInput(suggestion)}
-                  className="text-xs text-zinc-400 border border-white/10 rounded-xl px-3 py-2 hover:bg-white/5 hover:text-zinc-200 transition-colors text-left"
-                >
-                  {suggestion}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`flex gap-2.5 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}
-          >
-            <div
-              className={`w-7 h-7 rounded-full shrink-0 flex items-center justify-center ${
-                msg.role === "user"
-                  ? "bg-violet-500/20 border border-violet-500/30"
-                  : "bg-zinc-700/60 border border-white/10"
-              }`}
-            >
-              {msg.role === "user" ? (
-                <User size={13} className="text-violet-300" />
-              ) : (
-                <Bot size={13} className="text-zinc-300" />
-              )}
-            </div>
-            <div
-              className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
-                msg.role === "user"
-                  ? "bg-violet-500/15 border border-violet-500/20 text-zinc-200 rounded-tr-sm"
-                  : "bg-white/5 border border-white/8 text-zinc-300 rounded-tl-sm"
-              }`}
-            >
-              {msg.role === "assistant" && msg.content === "" && loading ? (
-                <div className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce [animation-delay:0ms]" />
-                  <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce [animation-delay:150ms]" />
-                  <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce [animation-delay:300ms]" />
+      {/* Chat Tab */}
+      {panelTab === "chat" && (
+        <>
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 scrollbar-thin">
+            {messages.length === 0 && (
+              <div className="flex flex-col items-center justify-center h-full gap-3 text-center py-8">
+                <div className="w-12 h-12 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
+                  <Bot size={22} className="text-violet-400" />
                 </div>
-              ) : (
-                <MessageContent role={msg.role} content={msg.content} />
-              )}
-              {/* {msg.content} */}
-            </div>
+                <div>
+                  <p className="text-sm font-medium text-zinc-300">
+                    AI Lesson Assistant
+                  </p>
+                  <p className="text-xs text-zinc-500 mt-1 max-w-48">
+                    Ask anything about this lesson. I'm here to help.
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-2 w-full mt-2">
+                  {[
+                    "Summarize this lesson",
+                    "Quiz me on this topic",
+                    "Explain a concept simply",
+                  ].map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      onClick={() => setInput(suggestion)}
+                      className="text-xs text-zinc-400 border border-white/10 rounded-xl px-3 py-2 hover:bg-white/5 hover:text-zinc-200 transition-colors text-left"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {messages.map((msg) => (
+              <div
+                key={msg.id}
+                className={`flex gap-2.5 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}
+              >
+                <div
+                  className={`w-7 h-7 rounded-full shrink-0 flex items-center justify-center ${
+                    msg.role === "user"
+                      ? "bg-violet-500/20 border border-violet-500/30"
+                      : "bg-zinc-700/60 border border-white/10"
+                  }`}
+                >
+                  {msg.role === "user" ? (
+                    <User size={13} className="text-violet-300" />
+                  ) : (
+                    <Bot size={13} className="text-zinc-300" />
+                  )}
+                </div>
+                <div
+                  className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+                    msg.role === "user"
+                      ? "bg-violet-500/15 border border-violet-500/20 text-zinc-200 rounded-tr-sm"
+                      : "bg-white/5 border border-white/8 text-zinc-300 rounded-tl-sm"
+                  }`}
+                >
+                  {msg.role === "assistant" && msg.content === "" && loading ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce [animation-delay:0ms]" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce [animation-delay:150ms]" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce [animation-delay:300ms]" />
+                    </div>
+                  ) : (
+                    <MessageContent role={msg.role} content={msg.content} />
+                  )}
+                </div>
+              </div>
+            ))}
+
+            <div ref={bottomRef} />
           </div>
-        ))}
 
-        <div ref={bottomRef} />
-      </div>
+          {/* Input */}
+          <div className="p-3 border-t border-white/8 shrink-0">
+            <div className="flex items-end gap-2 bg-white/5 border border-white/10 rounded-2xl px-3 py-2 focus-within:border-violet-500/40 transition-colors">
+              <textarea
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Ask about this lesson…"
+                rows={1}
+                className="flex-1 bg-transparent text-sm text-zinc-200 placeholder:text-zinc-600 resize-none outline-none max-h-24 scrollbar-thin py-0.5"
+                style={{ fieldSizing: "content" } as React.CSSProperties}
+              />
 
-      {/* Input */}
-      <div className="p-3 border-t border-white/8">
-        <div className="flex items-end gap-2 bg-white/5 border border-white/10 rounded-2xl px-3 py-2 focus-within:border-violet-500/40 transition-colors">
-          <textarea
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask about this lesson…"
-            rows={1}
-            className="flex-1 bg-transparent text-sm text-zinc-200 placeholder:text-zinc-600 resize-none outline-none max-h-24 scrollbar-thin py-0.5"
-            style={{ fieldSizing: "content" } as React.CSSProperties}
-          />
+              {/* Web search toggle */}
+              <button
+                onClick={() => setWebSearchEnabled(!webSearchEnabled)}
+                className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 transition-all ${
+                  webSearchEnabled
+                    ? "bg-violet-500/70 text-white border border-violet-400/50"
+                    : "bg-white/5 text-zinc-400 border border-white/10 hover:bg-white/10"
+                }`}
+                title={
+                  webSearchEnabled ? "Web search enabled" : "Enable web search"
+                }
+              >
+                <Globe size={13} />
+              </button>
 
-          {/* Web search toggle */}
-          <button
-            onClick={() => setWebSearchEnabled(!webSearchEnabled)}
-            className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 transition-all ${
-              webSearchEnabled
-                ? "bg-violet-500/70 text-white border border-violet-400/50"
-                : "bg-white/5 text-zinc-400 border border-white/10 hover:bg-white/10"
-            }`}
-            title={
-              webSearchEnabled ? "Web search enabled" : "Enable web search"
-            }
-          >
-            <Globe size={13} />
-          </button>
+              <button
+                onClick={sendMessage}
+                disabled={!input.trim() || loading}
+                className="w-7 h-7 rounded-xl bg-violet-500 hover:bg-violet-400 disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center justify-center shrink-0"
+              >
+                <Send size={13} className="text-white" />
+              </button>
+            </div>
+            <p className="text-[10px] text-zinc-600 mt-1.5 px-1">
+              Enter to send · Shift+Enter for new line
+            </p>
+          </div>
+        </>
+      )}
 
-          <button
-            onClick={sendMessage}
-            disabled={!input.trim() || loading}
-            className="w-7 h-7 rounded-xl bg-violet-500 hover:bg-violet-400 disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center justify-center shrink-0"
-          >
-            <Send size={13} className="text-white" />
-          </button>
+      {/* History Tab */}
+      {panelTab === "history" && (
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* History header */}
+          <div className="px-4 py-3 border-b border-white/8 shrink-0">
+            <p className="text-xs text-zinc-400">
+              {sessions.length} previous chat
+              {sessions.length !== 1 ? "s" : ""}
+            </p>
+          </div>
+
+          {/* Chat history list */}
+          <div className="flex-1 overflow-y-auto scrollbar-thin">
+            {historyLoading ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="flex flex-col items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" />
+                  <p className="text-xs text-zinc-500">Loading chats...</p>
+                </div>
+              </div>
+            ) : sessions.length === 0 ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <MessageSquare
+                    size={24}
+                    className="mx-auto mb-2 text-zinc-600"
+                  />
+                  <p className="text-xs text-zinc-500">No chat history yet</p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2 p-3">
+                {sessions.map((session) => (
+                  <button
+                    key={session.id}
+                    onClick={() => loadSessionMessages(session.id)}
+                    className="w-full text-left px-3 py-2.5 rounded-xl border border-white/8 hover:bg-white/5 hover:border-violet-500/30 transition-all group"
+                  >
+                    <p className="text-xs font-medium text-zinc-300 truncate group-hover:text-zinc-100">
+                      {session.title || "Untitled Chat"}
+                    </p>
+                    <p className="text-[10px] text-zinc-600 mt-1">
+                      {new Date(session.created_at).toLocaleDateString()}{" "}
+                      {new Date(session.created_at).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-        <p className="text-[10px] text-zinc-600 mt-1.5 px-1">
-          Enter to send · Shift+Enter for new line
-        </p>
-      </div>
+      )}
     </div>
   );
 }
