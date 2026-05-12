@@ -24,6 +24,9 @@ import {
   Minimize2,
   Maximize2,
   Globe,
+  Delete,
+  DeleteIcon,
+  LucideDelete,
 } from "lucide-react";
 
 import { lessonService } from "@/services/lesson.service";
@@ -191,6 +194,26 @@ function ChatPanel({
     }
   };
 
+  const handleDeleteSession = async (sessionIdToDelete: string) => {
+    try {
+      await chatService.deleteSession(sessionIdToDelete);
+      
+      // Remove from sessions list
+      setSessions((prev) => prev.filter((s) => s.id !== sessionIdToDelete));
+      
+      // Clear messages if deleted session is the current one
+      if (sessionId === sessionIdToDelete) {
+        setSessionId(null);
+        setMessages([]);
+      }
+      
+      toast.success("Chat session deleted");
+    } catch (err) {
+      console.error("Failed to delete session:", err);
+      toast.error("Failed to delete chat session");
+    }
+  };
+
   const handleHistoryTabClick = () => {
     setPanelTab("history");
     if (sessions.length === 0) {
@@ -256,7 +279,7 @@ function ChatPanel({
       };
 
       const res = await fetch(
-        `${API_URL || "http://localhost:8000"}/sessions/${currentSessionId}/messages`,
+        `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://103.180.163.187:60039"}/sessions/${currentSessionId}/messages`,
         {
           method: "POST",
           headers: {
@@ -524,10 +547,13 @@ function ChatPanel({
             ) : (
               <div className="space-y-2 p-3">
                 {sessions.map((session) => (
+                  <div key={session.id}
+                    className="w-full flex text-left px-3 py-2.5 rounded-xl border border-white/8 hover:bg-white/5 hover:border-violet-500/30 transition-all group"
+                  >
                   <button
-                    key={session.id}
+                    
                     onClick={() => loadSessionMessages(session.id)}
-                    className="w-full text-left px-3 py-2.5 rounded-xl border border-white/8 hover:bg-white/5 hover:border-violet-500/30 transition-all group"
+                    className="w-full text-left transition-all group"
                   >
                     <p className="text-xs font-medium text-zinc-300 truncate group-hover:text-zinc-100">
                       {session.title || "Untitled Chat"}
@@ -540,6 +566,13 @@ function ChatPanel({
                       })}
                     </p>
                   </button>
+                    <button onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteSession(session.id);
+                    }} className="text-red-400 hover:text-red-300 transition-colors">
+                      <LucideDelete size={16}/>
+                    </button>
+                    </div>
                 ))}
               </div>
             )}

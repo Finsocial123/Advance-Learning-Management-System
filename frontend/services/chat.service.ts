@@ -53,7 +53,7 @@ export const chatService = {
     };
 
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/sessions/${sessionId}/messages`,
+      `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://103.180.163.187:60039"}/sessions/${sessionId}/messages`,
       {
         method: "POST",
         headers: {
@@ -68,5 +68,25 @@ export const chatService = {
     if (!res.body) throw new Error("No response body");
 
     return res.body.getReader();
+  },
+
+
+  async deleteSession(
+    sessionId: string,
+  ) {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://103.180.163.187:60039"}/sessions/${sessionId}`,
+      {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    console.log(res)
+    if (!res.ok) throw new Error("Delete request failed");
+
+    return res.json();
   },
 };
