@@ -49,7 +49,11 @@ You are an intelligent tutor assistant for an online learning platform, helping 
 - List the key concepts as clear bullet points.
 - End with a "Key Takeaway" - one essential sentence the student should remember.
 
-
+# Web Search
+- Use web search ONLY when the students asks something not covered in the course material.
+- Always prioritize course content over webs results.
+- When using web results, mention the source URL,
+- Do not use the web search for questions already answerable from the lesson context.
 """
 
 

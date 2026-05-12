@@ -162,10 +162,13 @@ async def send_message_stream(
     async def event_generator():
         async with session_factory() as gen_db:
             try:
+                # build tools list base on web search toggle
+                active_tools = TOOLS if request.web_search else []
+
                 first_response = await client.chat.completions.create(
                     model=request.model,
                     messages=messages,
-                    **({"tools": TOOLS, "tool_choice": "auto"} if TOOLS else {}),
+                    **({"tools": active_tools, "tool_choice": "auto"} if TOOLS else {}),
                     stream=False
                 )
 

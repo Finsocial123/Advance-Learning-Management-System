@@ -23,6 +23,7 @@ import {
   Sparkles,
   Minimize2,
   Maximize2,
+  Globe,
 } from "lucide-react";
 
 import { lessonService } from "@/services/lesson.service";
@@ -137,6 +138,7 @@ function ChatPanel({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [webSearchEnabled, setWebSearchEnabled] = useState(false); //toggle internet search
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -199,6 +201,7 @@ function ChatPanel({
         model: "openrouter/free",
         content: userMsg.content,
         lesson_id: lessonId,
+        web_search: webSearchEnabled,
       };
 
       const res = await fetch(`${API_URL}/sessions/${sessionId}/messages`, {
@@ -209,7 +212,7 @@ function ChatPanel({
         },
         body: JSON.stringify(payload),
       });
-      console.log(payload)
+      console.log(payload);
 
       if (!res.ok) throw new Error("Chat request failed");
       if (!res.body) throw new Error("No response body");
@@ -367,6 +370,22 @@ function ChatPanel({
             className="flex-1 bg-transparent text-sm text-zinc-200 placeholder:text-zinc-600 resize-none outline-none max-h-24 scrollbar-thin py-0.5"
             style={{ fieldSizing: "content" } as React.CSSProperties}
           />
+
+          {/* Web search toggle */}
+          <button
+            onClick={() => setWebSearchEnabled(!webSearchEnabled)}
+            className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 transition-all ${
+              webSearchEnabled
+                ? "bg-violet-500/70 text-white border border-violet-400/50"
+                : "bg-white/5 text-zinc-400 border border-white/10 hover:bg-white/10"
+            }`}
+            title={
+              webSearchEnabled ? "Web search enabled" : "Enable web search"
+            }
+          >
+            <Globe size={13} />
+          </button>
+
           <button
             onClick={sendMessage}
             disabled={!input.trim() || loading}
