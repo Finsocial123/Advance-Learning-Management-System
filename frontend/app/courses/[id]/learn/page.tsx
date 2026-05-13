@@ -74,6 +74,13 @@ interface SummaryContent {
   key_takeaway: string;
 }
 
+interface Note {
+  id: string;
+  content: string;
+  timestamp: number;
+  createdAt: Date;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function formatDuration(totalSeconds: number) {
   const safeSeconds = Math.max(Math.ceil(totalSeconds), 0);
@@ -132,6 +139,143 @@ const MessageContent = ({
     </ReactMarkdown>
   );
 };
+
+// ─── NotesPanel ────────────────────────────────────────────────────────────────
+function NotesPanel({
+  notes,
+  onAddNote,
+  onDeleteNote,
+  onSeekToNote,
+}: {
+  notes: Note[];
+  onAddNote: (content: string) => void;
+  onDeleteNote: (noteId: string) => void;
+  onSeekToNote: (timestamp: number) => void;
+}) {
+  const [input, setInput] = useState("");
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [notes]);
+
+  const sortedNotes = [...notes].sort((a, b) => {
+    return sortOrder === "newest" ? b.timestamp - a.timestamp : a.timestamp - b.timestamp;
+  });
+
+  const handleAddNote = () => {
+    if (!input.trim()) return;
+    onAddNote(input.trim());
+    setInput("");
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleAddNote();
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="px-4 py-3.5 border-b border-white/8 shrink-0">
+        <div className="flex items-center gap-2 mb-3">
+          <BookOpen size={14} className="text-yellow-400" />
+          <span className="text-sm font-semibold text-zinc-200">Notes</span>
+          <span className="ml-auto text-xs text-zinc-500 font-mono">
+            {notes.length}
+          </span>
+        </div>
+        <select
+          value={sortOrder}
+          onChange={(e) => setSortOrder(e.target.value as "newest" | "oldest")}
+          className="w-full text-xs bg-white/5 border border-white/8 rounded-lg px-2 py-1.5 text-zinc-300 hover:border-white/15 transition-colors"
+        >
+          <option value="newest">Newest First</option>
+          <option value="oldest">Oldest First</option>
+        </select>
+      </div>
+
+      {/* Notes List */}
+      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2 scrollbar-thin">
+        {sortedNotes.length === 0 && (
+          <div className="flex flex-col items-center justify-center h-full gap-2 text-center py-8">
+            <div className="w-10 h-10 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center">
+              <BookOpen size={18} className="text-yellow-400" />
+            </div>
+            <p className="text-xs text-zinc-500">No notes yet</p>
+            <p className="text-[10px] text-zinc-600">Add notes while watching</p>
+          </div>
+        )}
+
+        {sortedNotes.map((note) => (
+          <div
+            key={note.id}
+            onClick={() => onSeekToNote(note.timestamp)}
+            className="w-full text-left group"
+          >
+            <div className="rounded-lg border border-white/8 bg-white/3 p-3 hover:bg-yellow-500/8 hover:border-yellow-500/20 transition-all group cursor-pointer"
+              >
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-start gap-2 flex-1 min-w-0">
+                  <div className="text-xs font-mono text-yellow-400 shrink-0 mt-0.5">
+                    {formatDuration(note.timestamp)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-zinc-200 line-clamp-1">
+                      {note.content}
+                    </p>
+                    <p className="text-[10px] text-zinc-600 mt-1">
+                      {note.createdAt.toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit",
+                      })}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteNote(note.id);
+                  }}
+                  className="text-red-400/60 hover:text-red-400 transition-colors shrink-0 mt-0.5"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Input */}
+      <div className="p-3 border-t border-white/8 shrink-0 space-y-2">
+        <textarea
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Add a note… (Shift+Enter for new line)"
+          rows={2}
+          className="w-full bg-white/5 border border-white/8 rounded-lg px-2.5 py-2 text-xs text-zinc-200 placeholder:text-zinc-600 resize-none outline-none focus:border-yellow-500/40 transition-colors max-h-24 scrollbar-thin"
+        />
+        <Button
+          onClick={handleAddNote}
+          size="sm"
+          className="w-full"
+          disabled={!input.trim()}
+        >
+          <BookOpen size={12} />
+          Add Note
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 // ─── ChatPanel ────────────────────────────────────────────────────────────────
 function ChatPanel({
@@ -677,6 +821,10 @@ export default function LearnPage() {
   );
   const [summaryLoading, setSummaryLoading] = useState(false);
 
+  // ── Notes state ──
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [notesTab, setNotesTab] = useState(false);
+
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const watchIntervalRef = useRef<number | null>(null);
   const pendingWatchSecondsRef = useRef(0);
@@ -874,9 +1022,75 @@ export default function LearnPage() {
       pendingWatchSecondsRef.current = 0;
       setCurrentLesson(lesson);
       setView("lesson");
+      // Load notes for this lesson
+      loadNotesForLesson(lesson.id);
     },
     [flushWatchProgress, stopWatchTimer],
   );
+
+  // ── Note Management ──
+  const loadNotesForLesson = (lessonId: number) => {
+    try {
+      const stored = localStorage.getItem(`notes_lesson_${lessonId}`);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        setNotes(
+          parsed.map((n: any) => ({
+            ...n,
+            createdAt: new Date(n.createdAt),
+          }))
+        );
+      } else {
+        setNotes([]);
+      }
+    } catch {
+      setNotes([]);
+    }
+  };
+
+  const saveNotesToStorage = (notesToSave: Note[]) => {
+    if (!currentLesson) return;
+    try {
+      localStorage.setItem(
+        `notes_lesson_${currentLesson.id}`,
+        JSON.stringify(notesToSave)
+      );
+    } catch {
+      toast.error("Failed to save notes");
+    }
+  };
+
+  const addNote = (content: string) => {
+    if (!currentLesson || !videoRef.current) {
+      toast.error("Please wait for the lesson to load");
+      return;
+    }
+    const currentTime = videoRef.current.currentTime || 0;
+    const newNote: Note = {
+      id: crypto.randomUUID(),
+      content,
+      timestamp: currentTime,
+      createdAt: new Date(),
+    };
+    const updatedNotes = [...notes, newNote];
+    setNotes(updatedNotes);
+    saveNotesToStorage(updatedNotes);
+    toast.success("Note added!");
+  };
+
+  const deleteNote = (noteId: string) => {
+    const updatedNotes = notes.filter((n) => n.id !== noteId);
+    setNotes(updatedNotes);
+    saveNotesToStorage(updatedNotes);
+    toast.success("Note deleted");
+  };
+
+  const seekToNote = (timestamp: number) => {
+    if (!videoRef.current) return;
+    videoRef.current.currentTime = timestamp;
+    videoRef.current.play().catch(() => {});
+    // toast.success(`Jumped to ${formatDuration(timestamp)}`);
+  };
 
   const handleVideoLoadedMetadata = useCallback(() => {
     if (!currentLesson?.video_url) return;
@@ -906,6 +1120,13 @@ export default function LearnPage() {
     isSeekingRef.current = false;
     lastTickAtRef.current = Date.now();
   }, []);
+
+  // Load notes when lesson changes
+  useEffect(() => {
+    if (currentLesson) {
+      loadNotesForLesson(currentLesson.id);
+    }
+  }, [currentLesson?.id]);
 
   useEffect(() => {
     if (!hasHydrated) return;
@@ -1574,49 +1795,86 @@ export default function LearnPage() {
           </div>
         </div>
 
-        {/* ── Chat Panel ── */}
+        {/* ── Right Panel (Notes / Chat) ── */}
         <div
-          className={`flex flex-col border-l border-white/8 bg-zinc-950/60 transition-all duration-300 ${
-            chatOpen ? "w-80 xl:w-96" : "w-12"
-          } shrink-0`}
+          className={`flex shrink-0 border-l border-white/8 bg-zinc-950/60 transition-all duration-300 ${
+            chatOpen ? "w-80 xl:w-96 flex-col" : "w-12 flex-col"
+          }`}
         >
-          {/* Chat toggle header */}
-          <div
-            className="flex items-center gap-2 px-3 py-3.5 border-b border-white/8 cursor-pointer hover:bg-white/4 transition-colors select-none"
-            onClick={() => setChatOpen((o) => !o)}
-          >
-            <div className="w-7 h-7 rounded-xl bg-violet-500/15 border border-violet-500/25 flex items-center justify-center shrink-0">
-              <MessageSquare size={13} className="text-violet-400" />
-            </div>
-            {chatOpen && (
-              <>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-zinc-300 leading-none">
-                    AI Assistant
-                  </p>
-                  <p className="text-[10px] text-zinc-600 mt-0.5">
-                    Ask about this lesson
-                  </p>
-                </div>
-                <ChevronRight size={13} className="text-zinc-600 rotate-180" />
-              </>
-            )}
-            {!chatOpen && (
-              <ChevronLeft
-                size={13}
-                className="text-zinc-600 rotate-180 absolute"
-              />
-            )}
-          </div>
+          {chatOpen ? (
+            <>
+              {/* Header with tabs when open */}
+              <div className="flex items-center border-b border-white/8 shrink-0">
+                <button
+                  onClick={() => setNotesTab(true)}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 px-2 text-xs transition-colors border-b-2 ${
+                    notesTab
+                      ? "text-yellow-400 border-yellow-500"
+                      : "text-zinc-500 border-transparent hover:text-zinc-300"
+                  }`}
+                  title="Notes"
+                >
+                  <BookOpen size={13} />
+                  Notes
+                </button>
+                <button
+                  onClick={() => setNotesTab(false)}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 px-2 text-xs transition-colors border-b-2 ${
+                    !notesTab
+                      ? "text-violet-400 border-violet-500"
+                      : "text-zinc-500 border-transparent hover:text-zinc-300"
+                  }`}
+                  title="Chat"
+                >
+                  <MessageSquare size={13} />
+                  Chat
+                </button>
+                <button
+                  onClick={() => setChatOpen(false)}
+                  className="px-2 text-zinc-500 hover:text-zinc-300 transition-colors"
+                  title="Collapse"
+                >
+                  <X size={13} />
+                </button>
+              </div>
 
-          {chatOpen && (
-            <div className="flex-1 overflow-hidden">
-              <ChatPanel
-                lessonId={
-                  view === "lesson" ? (currentLesson?.id ?? null) : null
-                }
-                userId={user?.id ?? 0}
-              />
+              {/* Panel content */}
+              {notesTab ? (
+                <NotesPanel
+                  notes={notes}
+                  onAddNote={addNote}
+                  onDeleteNote={deleteNote}
+                  onSeekToNote={seekToNote}
+                />
+              ) : (
+                <ChatPanel lessonId={currentLesson?.id ?? null} userId={user?.id ?? 0} />
+              )}
+            </>
+          ) : (
+            /* Collapsed: vertical icon buttons */
+            <div className="flex flex-col items-center pt-3 gap-1">
+              <button
+                onClick={() => { setNotesTab(true); setChatOpen(true); }}
+                className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${
+                  notesTab
+                    ? "bg-yellow-500/15 text-yellow-400 border border-yellow-500/30"
+                    : "text-zinc-500 hover:text-zinc-300 hover:bg-white/6"
+                }`}
+                title="Notes"
+              >
+                <BookOpen size={15} />
+              </button>
+              <button
+                onClick={() => { setNotesTab(false); setChatOpen(true); }}
+                className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${
+                  !notesTab
+                    ? "bg-violet-500/15 text-violet-400 border border-violet-500/30"
+                    : "text-zinc-500 hover:text-zinc-300 hover:bg-white/6"
+                }`}
+                title="AI Chat"
+              >
+                <MessageSquare size={15} />
+              </button>
             </div>
           )}
         </div>
