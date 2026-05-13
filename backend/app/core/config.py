@@ -16,6 +16,8 @@ if not DATABASE_URL:
     raise RuntimeError("DATABASE_URL is missing in backend/.env")
 ASYNC_DATABASE_URL = os.getenv("ASYNC_DATABASE_URL")
 
+ASYNC_DATABASE_URL = os.getenv("ASYNC_DATABASE_URL")
+
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
     raise RuntimeError("SECRET_KEY is missing in backend/.env")

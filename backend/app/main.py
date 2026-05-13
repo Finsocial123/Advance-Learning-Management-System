@@ -1,3 +1,8 @@
+import asyncio
+import sys
+
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -22,7 +27,7 @@ from app.routes.dashboard import router as dashboard_router
 from app.routes.chats import router as chats_router
 
 # create all tables
-Base.metadata.create_all(bind=engine)
+# Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="LMS API",
@@ -33,7 +38,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "*"
+        "http://localhost:3000",
     ],
     allow_credentials=True,
     allow_methods=["*"],
