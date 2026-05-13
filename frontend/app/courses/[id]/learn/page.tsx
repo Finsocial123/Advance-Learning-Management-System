@@ -61,6 +61,7 @@ interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
+  enhanced?: boolean;
 }
 
 interface SummaryContent {
@@ -297,6 +298,18 @@ function ChatPanel({
           try {
             const event = JSON.parse(dataStr);
 
+            // Handle enhanced prompt
+            if (event.enhanced_prompt) {
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === userMsg.id
+                    ? { ...msg, content: event.enhanced_prompt, enhanced: true }
+                    : msg,
+                ),
+              );
+              continue;
+            }
+
             if (event.token) {
               setMessages((prev) =>
                 prev.map((msg) =>
@@ -432,7 +445,17 @@ function ChatPanel({
                       <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce [animation-delay:300ms]" />
                     </div>
                   ) : (
-                    <MessageContent role={msg.role} content={msg.content} />
+                    // <MessageContent role={msg.role} content={msg.content} />
+                    <div>
+                      {/* Show sparkle icon if this user message was enhanced */}
+                      {msg.role === "user" && msg.enhanced && (
+                        <Sparkles
+                          size={12}
+                          className="inline-block mr-1 text-violet-400 align-middle"
+                        />
+                      )}
+                      <MessageContent role={msg.role} content={msg.content} />
+                    </div>
                   )}
                 </div>
               </div>

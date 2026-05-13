@@ -82,15 +82,6 @@ async def send_message_stream(
     if not session:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
 
-    # Save user message
-    user_msg = ChatMessage(
-        session_id=session_id,
-        role=ChatRole.USER,
-        content=request.content,
-        user_id=request.user_id
-    )
-    db.add(user_msg)
-    await db.commit()
 
     #intercept summary and quiz before RAG and LLM
     BLOCK_KEYWORDS = ["summarize", "summary", "overview", "key points", "summarise", "quiz"]
@@ -119,6 +110,16 @@ async def send_message_stream(
         enhanced_content = enhance_response.choices[0].message.content.strip()
     else:
         enhanced_content = request.content
+
+    user_msg = ChatMessage(
+        session_id=session_id,
+        role=ChatRole.USER,
+        content=enhanced_content,     
+        user_id=request.user_id,
+        is_enhanced=request.enhance_prompt   
+    )
+    db.add(user_msg)
+    await db.commit()
 
     # RAG pipeline
     context = None
