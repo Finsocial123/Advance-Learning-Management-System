@@ -14,6 +14,7 @@ TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise RuntimeError("DATABASE_URL is missing in backend/.env")
+ASYNC_DATABASE_URL = os.getenv("ASYNC_DATABASE_URL")
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
