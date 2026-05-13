@@ -100,7 +100,7 @@ export default function CourseStudentsProgressPage() {
   if (!report) return null;
 
   return (
-    <div className="page-shell">
+    <div className="page-shell max-w-7xl  w-full mx-auto">
       <div className="section-header">
         <div className="space-y-4">
           <Button

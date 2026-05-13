@@ -58,3 +58,7 @@ select {
 ::-webkit-scrollbar-corner {
   background: transparent;
 }
+
+.group:hover .tooltip-arrow {
+  border-top-color: #27272a; /* matches bg-zinc-800 */
+}
