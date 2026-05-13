@@ -297,7 +297,7 @@ function StudentSection({
   onOpenCourse: (courseId: number) => void;
 }) {
   return (
-    <section className="space-y-4">
+    <section className="space-y-4 ">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-white">Student Progress Report</h2>

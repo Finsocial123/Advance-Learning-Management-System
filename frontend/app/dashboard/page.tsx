@@ -35,7 +35,7 @@ export default function DashboardPage() {
   const firstName = user.name?.split(" ")[0] || "User";
 
   return (
-    <div className="page-shell max-w-7xl  w-full mx-auto">
+    <div className="page-shell max-w-7xl  w-full mx-auto py-10">
       <div className="section-header">
         <div>
           <div className="mb-2 flex flex-wrap items-center gap-3">

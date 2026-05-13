@@ -279,7 +279,7 @@ function ChatPanel({
       };
 
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://103.180.163.187:60039"}/sessions/${currentSessionId}/messages`,
+        `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://103.180.163.187:60007"}/sessions/${currentSessionId}/messages`,
         {
           method: "POST",
           headers: {

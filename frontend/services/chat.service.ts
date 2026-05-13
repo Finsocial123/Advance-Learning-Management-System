@@ -53,7 +53,7 @@ export const chatService = {
     };
 
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://103.180.163.187:60039"}/sessions/${sessionId}/messages`,
+      `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://103.180.163.187:60007"}/sessions/${sessionId}/messages`,
       {
         method: "POST",
         headers: {
@@ -75,7 +75,7 @@ export const chatService = {
     sessionId: string,
   ) {
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://103.180.163.187:60039"}/sessions/${sessionId}`,
+      `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://103.180.163.187:60007"}/sessions/${sessionId}`,
       {
         method: "DELETE",
         headers: {
