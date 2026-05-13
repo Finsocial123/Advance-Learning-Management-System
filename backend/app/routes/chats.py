@@ -101,23 +101,41 @@ async def send_message_stream(
             yield f"data: {json.dumps({"status": "done"})}\n\n"
         return StreamingResponse(redirect_generator(), media_type="text/event-stream")
 
+    if request.enhance_prompt:
+        enhance_response = await client.chat.completions.create(
+            model=MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a prompt enhancer. Rewrite the student's questions to be clearer, more specific, and more detailed. Return ONLY the rewritten question, nothing else."
+                },
+                {
+                    "role": "user",
+                    "content": request.content
+                }
+            ],
+            stream=False
+        )
+        enhanced_content = enhance_response.choices[0].message.content.strip()
+    else:
+        enhanced_content = request.content
+
     # RAG pipeline
     context = None
     if request.lesson_id is not None:
         context = await retrieve_context(
-            query=request.content,
+            query=enhanced_content,
             db=db,
             lesson_id=request.lesson_id,
             top_k=6
         )
         user_content = RAG_PROMPT_TEMPLATE.format(
             context=context,
-            query=request.content
+            query=enhanced_content
         )
     else:
-        user_content = request.content
+        user_content = enhanced_content
 
-    print(request)
     print("CONTEXT:", context[:200] if context else "NO CONTEXT — lesson_id was not provided")
     # Build history
     result = await db.execute(
@@ -163,13 +181,16 @@ async def send_message_stream(
     async def event_generator():
         async with session_factory() as gen_db:
             try:
+                if request.enhance_prompt:
+                    yield f"data: {json.dumps({'enhanced_prompt': enhanced_content})}\n\n"
+
                 # build tools list base on web search toggle
                 active_tools = TOOLS if request.web_search else []
 
                 first_response = await client.chat.completions.create(
                     model=MODEL,
                     messages=messages,
-                    **({"tools": active_tools, "tool_choice": "auto"} if TOOLS else {}),
+                    **({"tools": active_tools, "tool_choice": "auto"} if active_tools else {}),
                     stream=False
                 )
 
@@ -240,7 +261,7 @@ async def send_message_stream(
                     ).with_for_update()
                     session_to_update = (await gen_db.execute(stmt)).scalars().first()
                     if session_to_update and session_to_update.title == "New Chat":
-                        session_to_update.title = request.content[:60]
+                        session_to_update.title = enhanced_content[:60]
 
                     await gen_db.commit()
 
@@ -273,7 +294,7 @@ async def send_message_stream(
                     ).with_for_update()
                     session_to_update = (await gen_db.execute(stmt)).scalars().first()
                     if session_to_update and session_to_update.title == "New Chat":
-                        session_to_update.title = request.content[:60]
+                        session_to_update.title = enhanced_content[:60]
 
                     await gen_db.commit()
 

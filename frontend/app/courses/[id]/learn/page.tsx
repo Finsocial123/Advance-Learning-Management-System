@@ -24,6 +24,7 @@ import {
   Minimize2,
   Maximize2,
   Globe,
+  WandSparkles,
 } from "lucide-react";
 
 import { lessonService } from "@/services/lesson.service";
@@ -143,6 +144,7 @@ function ChatPanel({
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [webSearchEnabled, setWebSearchEnabled] = useState(false); //toggle internet search
+  const [enhancePromptEnabled, setEnhancePromptEnabled] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -253,6 +255,7 @@ function ChatPanel({
         content: userMsg.content,
         lesson_id: lessonId,
         web_search: webSearchEnabled,
+        enhance_prompt: enhancePromptEnabled,
       };
 
       const res = await fetch(
@@ -476,6 +479,27 @@ function ChatPanel({
                     : "Enable web search"}
                 </div>
               </div>
+
+              {/* enhanced prompt toggle */}
+              <div className="relative group">
+                <button
+                  onClick={() => setEnhancePromptEnabled(!enhancePromptEnabled)}
+                  className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 transition-all ${
+                    enhancePromptEnabled
+                      ? "bg-violet-500/70 text-white border border-violet-400/50"
+                      : "bg-white/5 text-zinc-400 border border-white/10 hover:bg-white/10"
+                  }`}
+                >
+                  <WandSparkles size={13} />
+                </button>
+                {/*tooltip for enhanced prompt on hover*/}
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-zinc-800 text-zinc-200 text-[10px] font-medium rounded-md whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow-lg border border-white/10">
+                  {enhancePromptEnabled
+                    ? "Disable prompt enhancement"
+                    : "Enhance my prompt"}
+                </div>
+              </div>
+
               <button
                 onClick={sendMessage}
                 disabled={!input.trim() || loading}

@@ -10,6 +10,7 @@ class ChatBase(BaseModel):
 class ChatRequest(ChatBase):
     lesson_id: int | None = None
     web_search: bool = False
+    enhance_prompt: bool = False
     pass
 
 class ChatResponse(ChatBase):
