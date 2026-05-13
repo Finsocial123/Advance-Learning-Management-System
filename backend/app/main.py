@@ -3,11 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.database import engine, Base
 
-# import all models so Base knows about them before create_all
 from app.models import (
     User, AuthOTP, Course, Lesson,
     Assignment, Submission,
-    Enrollment, LessonProgress, VideoWatchProgress
+    Enrollment, LessonProgress, VideoWatchProgress,
+    LiveSession, Notification
 )
 
 from app.routes.auth import router as auth_router
@@ -20,20 +20,22 @@ from app.routes.enrollments import router as enrollments_router
 from app.routes.progress import router as progress_router
 from app.routes.dashboard import router as dashboard_router
 from app.routes.chats import router as chats_router
+from app.routes.live_sessions import router as live_sessions_router
+from app.routes.notifications import router as notifications_router
 
-# create all tables
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="LMS API",
     version="2.0.0",
-    description="Learning Management System with role-based access"
+    description="Learning Management System with role-based access",
 )
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "*"
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -50,6 +52,9 @@ app.include_router(enrollments_router)
 app.include_router(progress_router)
 app.include_router(dashboard_router)
 app.include_router(chats_router)
+app.include_router(live_sessions_router)
+app.include_router(notifications_router)
+
 
 
 @app.get("/")

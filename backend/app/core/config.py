@@ -38,4 +38,8 @@ SMTP_FROM_EMAIL = os.getenv("SMTP_FROM_EMAIL", SMTP_USERNAME or "no-reply@exampl
 SMTP_FROM_NAME = os.getenv("SMTP_FROM_NAME", "LMS")
 SMTP_USE_TLS = os.getenv("SMTP_USE_TLS", "true").lower() == "true"
 
+LIVEKIT_URL = os.getenv("LIVEKIT_URL")
+LIVEKIT_API_KEY = os.getenv("LIVEKIT_API_KEY")
+LIVEKIT_API_SECRET = os.getenv("LIVEKIT_API_SECRET")
+
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
