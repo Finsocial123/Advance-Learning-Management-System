@@ -27,6 +27,7 @@ import {
   Delete,
   DeleteIcon,
   LucideDelete,
+  WandSparkles,
 } from "lucide-react";
 
 import { lessonService } from "@/services/lesson.service";
@@ -63,6 +64,7 @@ interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
+  enhanced?: boolean;
 }
 
 interface SummaryContent {
@@ -146,6 +148,7 @@ function ChatPanel({
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [webSearchEnabled, setWebSearchEnabled] = useState(false); //toggle internet search
+  const [enhancePromptEnabled, setEnhancePromptEnabled] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -197,16 +200,16 @@ function ChatPanel({
   const handleDeleteSession = async (sessionIdToDelete: string) => {
     try {
       await chatService.deleteSession(sessionIdToDelete);
-      
+
       // Remove from sessions list
       setSessions((prev) => prev.filter((s) => s.id !== sessionIdToDelete));
-      
+
       // Clear messages if deleted session is the current one
       if (sessionId === sessionIdToDelete) {
         setSessionId(null);
         setMessages([]);
       }
-      
+
       toast.success("Chat session deleted");
     } catch (err) {
       console.error("Failed to delete session:", err);
@@ -276,6 +279,7 @@ function ChatPanel({
         content: userMsg.content,
         lesson_id: lessonId,
         web_search: webSearchEnabled,
+        enhance_prompt: enhancePromptEnabled,
       };
 
       const res = await fetch(
@@ -316,6 +320,18 @@ function ChatPanel({
 
           try {
             const event = JSON.parse(dataStr);
+
+            // Handle enhanced prompt
+            if (event.enhanced_prompt) {
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === userMsg.id
+                    ? { ...msg, content: event.enhanced_prompt, enhanced: true }
+                    : msg,
+                ),
+              );
+              continue;
+            }
 
             if (event.token) {
               setMessages((prev) =>
@@ -452,7 +468,17 @@ function ChatPanel({
                       <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce [animation-delay:300ms]" />
                     </div>
                   ) : (
-                    <MessageContent role={msg.role} content={msg.content} />
+                    // <MessageContent role={msg.role} content={msg.content} />
+                    <div>
+                      {/* Show sparkle icon if this user message was enhanced */}
+                      {msg.role === "user" && msg.enhanced && (
+                        <Sparkles
+                          size={12}
+                          className="inline-block mr-1 text-violet-400 align-middle"
+                        />
+                      )}
+                      <MessageContent role={msg.role} content={msg.content} />
+                    </div>
                   )}
                 </div>
               </div>
@@ -499,6 +525,27 @@ function ChatPanel({
                     : "Enable web search"}
                 </div>
               </div>
+
+              {/* enhanced prompt toggle */}
+              <div className="relative group">
+                <button
+                  onClick={() => setEnhancePromptEnabled(!enhancePromptEnabled)}
+                  className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 transition-all ${
+                    enhancePromptEnabled
+                      ? "bg-violet-500/70 text-white border border-violet-400/50"
+                      : "bg-white/5 text-zinc-400 border border-white/10 hover:bg-white/10"
+                  }`}
+                >
+                  <WandSparkles size={13} />
+                </button>
+                {/*tooltip for enhanced prompt on hover*/}
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-zinc-800 text-zinc-200 text-[10px] font-medium rounded-md whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow-lg border border-white/10">
+                  {enhancePromptEnabled
+                    ? "Disable prompt enhancement"
+                    : "Enhance my prompt"}
+                </div>
+              </div>
+
               <button
                 onClick={sendMessage}
                 disabled={!input.trim() || loading}
@@ -547,32 +594,35 @@ function ChatPanel({
             ) : (
               <div className="space-y-2 p-3">
                 {sessions.map((session) => (
-                  <div key={session.id}
+                  <div
+                    key={session.id}
                     className="w-full flex text-left px-3 py-2.5 rounded-xl border border-white/8 hover:bg-white/5 hover:border-violet-500/30 transition-all group"
                   >
-                  <button
-                    
-                    onClick={() => loadSessionMessages(session.id)}
-                    className="w-full text-left transition-all group"
-                  >
-                    <p className="text-xs font-medium text-zinc-300 truncate group-hover:text-zinc-100">
-                      {session.title || "Untitled Chat"}
-                    </p>
-                    <p className="text-[10px] text-zinc-600 mt-1">
-                      {new Date(session.created_at).toLocaleDateString()}{" "}
-                      {new Date(session.created_at).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </p>
-                  </button>
-                    <button onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteSession(session.id);
-                    }} className="text-red-400 hover:text-red-300 transition-colors">
-                      <LucideDelete size={16}/>
+                    <button
+                      onClick={() => loadSessionMessages(session.id)}
+                      className="w-full text-left transition-all group"
+                    >
+                      <p className="text-xs font-medium text-zinc-300 truncate group-hover:text-zinc-100">
+                        {session.title || "Untitled Chat"}
+                      </p>
+                      <p className="text-[10px] text-zinc-600 mt-1">
+                        {new Date(session.created_at).toLocaleDateString()}{" "}
+                        {new Date(session.created_at).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
                     </button>
-                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteSession(session.id);
+                      }}
+                      className="text-red-400 hover:text-red-300 transition-colors"
+                    >
+                      <LucideDelete size={16} />
+                    </button>
+                  </div>
                 ))}
               </div>
             )}

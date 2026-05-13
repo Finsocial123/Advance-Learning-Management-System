@@ -8,7 +8,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.core.config import DATABASE_URL, ASYNC_DATABASE_URL
+from app.core.config import DATABASE_URL,ASYNC_DATABASE_URL
 
 # Sync engine
 engine = create_engine(
@@ -40,6 +40,18 @@ def get_db():
         raise
     finally:
         db.close()
+
+
+# ──────────────────────────────────────────
+# Async engine  (used by AI chat router)
+# ──────────────────────────────────────────
+# psycopg v3 async driver needs a different dialect name
+  # same URL, psycopg v3 supports async natively
+
+async_engine = create_async_engine(
+    ASYNC_DATABASE_URL
+    # connect_args={"options": "-c search_path=public"}
+)
 
 AsyncSessionLocal = async_sessionmaker(
     async_engine,

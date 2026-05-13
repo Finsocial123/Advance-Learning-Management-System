@@ -5,7 +5,7 @@ import enum
 import uuid
 from typing import Optional
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, Enum, JSON
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, Enum, JSON, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -49,3 +49,5 @@ class ChatMessage(Base):
 
     tool_calls: Mapped[Optional[list[dict]]] = mapped_column(JSON, nullable=True)
     tool_call_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+    is_enhanced: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
