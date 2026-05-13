@@ -187,7 +187,7 @@ npm install
 Create a `.env.local` file inside the `frontend` folder:
 
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id
 ```
 
