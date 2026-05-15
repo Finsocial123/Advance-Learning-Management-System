@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, Float
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -44,5 +44,8 @@ class LessonChunk(Base):
     chunk_index: Mapped[int] = mapped_column(Integer, default=0)
     embedding: Mapped[list[float]] = mapped_column(Vector(1536), nullable=False)
     lesson_id: Mapped[int] = mapped_column(ForeignKey("lessons.id", ondelete="CASCADE"))
+
+    start_time: Mapped[float | None] = mapped_column(Float, nullable=True)
+    end_time: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     lesson: Mapped["Lesson"] = relationship(back_populates="chunks")
