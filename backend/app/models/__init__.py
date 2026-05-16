@@ -8,3 +8,6 @@ from app.models.enrollment import Enrollment
 from app.models.progress import LessonProgress
 
 from app.models.video_watch_progress import VideoWatchProgress
+
+from app.models.live_session import LiveSession
+from app.models.notification import Notification
