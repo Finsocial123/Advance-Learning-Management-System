@@ -1,18 +1,26 @@
 "use client";
 
-import { useState } from "react";
-import { FileVideo, FileText, LayoutGrid, Link as LinkIcon } from "lucide-react";
+import { use, useState } from "react";
+import {
+  FileVideo,
+  FileText,
+  LayoutGrid,
+  Link as LinkIcon,
+} from "lucide-react";
 import Input from "@/components/ui/Input";
 import Textarea from "@/components/ui/TextArea";
 import Button from "@/components/ui/Button";
 import { Lesson } from "@/types";
 import { cn } from "@/lib/utils";
+import { ChevronDown } from "lucide-react";
+import LANGUAGE_NAMES from "@/utils/languages";
 
 interface LessonFormProps {
   initial?: Partial<Lesson>;
   onSubmit: (data: {
     title: string;
     description: string;
+    language: string;
     order: number;
     external_video_link: string;
     video: File | null;
@@ -28,8 +36,11 @@ export default function LessonForm({
 }: LessonFormProps) {
   const [title, setTitle] = useState(initial?.title || "");
   const [description, setDescription] = useState(initial?.description || "");
+  const [language, setLanguage] = useState(initial?.language || "en");
   const [order, setOrder] = useState(initial?.order ?? 0);
-  const [externalLink, setExternalLink] = useState(initial?.external_video_link || "");
+  const [externalLink, setExternalLink] = useState(
+    initial?.external_video_link || "",
+  );
   const [video, setVideo] = useState<File | null>(null);
   const [pdf, setPdf] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
@@ -47,7 +58,15 @@ export default function LessonForm({
     if (!validate()) return;
     setLoading(true);
     try {
-      await onSubmit({ title, description, order, external_video_link: externalLink, video, pdf });
+      await onSubmit({
+        title,
+        description,
+        order,
+        external_video_link: externalLink,
+        video,
+        pdf,
+        language,
+      });
     } finally {
       setLoading(false);
     }
@@ -75,6 +94,38 @@ export default function LessonForm({
         />
       </div>
 
+      {/* ✅ New: Language selector */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="md:col-span-3" /> {/* spacer to align with title */}
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 px-1">
+            Language
+          </label>
+          <div className="relative">
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              className="appearance-none w-full h-11 bg-white/5 border border-white/10 rounded-xl px-3 pr-8 text-sm text-zinc-300 outline-none focus:border-violet-500/40 transition-colors cursor-pointer hover:bg-white/10"
+            >
+              {" "}
+              {Object.entries(LANGUAGE_NAMES).map(([code, name]) => (
+                <option
+                  key={code}
+                  value={code}
+                  className="bg-zinc-800 text-zinc-200"
+                >
+                  {name}
+                </option>
+              ))}
+            </select>
+            <ChevronDown
+              size={14}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none"
+            />
+          </div>
+        </div>
+      </div>
+
       <Textarea
         label="Lesson Content / Summary"
         placeholder="Provide a brief overview for students..."
@@ -95,35 +146,71 @@ export default function LessonForm({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Video upload */}
           <div className="space-y-2">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 px-1">Video Asset</label>
+            <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 px-1">
+              Video Asset
+            </label>
             <label className="cursor-pointer group block">
-              <div className={cn(
-                "w-full h-36 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center gap-2 transition-all duration-300",
-                video ? "border-violet-500/50 bg-violet-500/5" : "border-white/5 bg-white/5 hover:border-violet-500/30"
-              )}>
-                <FileVideo size={24} className={video ? "text-violet-400" : "text-zinc-500 group-hover:text-violet-400"} />
+              <div
+                className={cn(
+                  "w-full h-36 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center gap-2 transition-all duration-300",
+                  video
+                    ? "border-violet-500/50 bg-violet-500/5"
+                    : "border-white/5 bg-white/5 hover:border-violet-500/30",
+                )}
+              >
+                <FileVideo
+                  size={24}
+                  className={
+                    video
+                      ? "text-violet-400"
+                      : "text-zinc-500 group-hover:text-violet-400"
+                  }
+                />
                 <span className="text-[11px] font-medium text-zinc-400 px-4 text-center truncate w-full">
                   {video ? video.name : "Native MP4/WebM"}
                 </span>
               </div>
-              <input type="file" accept="video/*" className="hidden" onChange={(e) => setVideo(e.target.files?.[0] || null)} />
+              <input
+                type="file"
+                accept="video/*"
+                className="hidden"
+                onChange={(e) => setVideo(e.target.files?.[0] || null)}
+              />
             </label>
           </div>
 
           {/* PDF upload */}
           <div className="space-y-2">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 px-1">Course PDF</label>
+            <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 px-1">
+              Course PDF
+            </label>
             <label className="cursor-pointer group block">
-              <div className={cn(
-                "w-full h-36 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center gap-2 transition-all duration-300",
-                pdf ? "border-blue-500/50 bg-blue-500/5" : "border-white/5 bg-white/5 hover:border-blue-500/30"
-              )}>
-                <FileText size={24} className={pdf ? "text-blue-400" : "text-zinc-500 group-hover:text-blue-400"} />
+              <div
+                className={cn(
+                  "w-full h-36 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center gap-2 transition-all duration-300",
+                  pdf
+                    ? "border-blue-500/50 bg-blue-500/5"
+                    : "border-white/5 bg-white/5 hover:border-blue-500/30",
+                )}
+              >
+                <FileText
+                  size={24}
+                  className={
+                    pdf
+                      ? "text-blue-400"
+                      : "text-zinc-500 group-hover:text-blue-400"
+                  }
+                />
                 <span className="text-[11px] font-medium text-zinc-400 px-4 text-center truncate w-full">
                   {pdf ? pdf.name : "Resource Document"}
                 </span>
               </div>
-              <input type="file" accept=".pdf" className="hidden" onChange={(e) => setPdf(e.target.files?.[0] || null)} />
+              <input
+                type="file"
+                accept=".pdf"
+                className="hidden"
+                onChange={(e) => setPdf(e.target.files?.[0] || null)}
+              />
             </label>
           </div>
         </div>

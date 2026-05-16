@@ -10,7 +10,7 @@ class Submission(Base):
     id = Column(Integer, primary_key=True, index=True)
 
     student_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    assignment_id = Column(Integer, ForeignKey("assignments.id"), nullable=False)
+    assignment_id = Column(Integer, ForeignKey("assignments.id", ondelete="CASCADE"), nullable=False)
 
     file_url = Column(String(500), nullable=True)
     file_public_id = Column(String(255), nullable=True)

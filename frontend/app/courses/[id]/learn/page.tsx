@@ -29,7 +29,7 @@ import {
   LucideDelete,
   WandSparkles,
 } from "lucide-react";
-
+import LANGUAGE_NAMES from "@/utils/languages";
 import { lessonService } from "@/services/lesson.service";
 import { progressService } from "@/services/progress.service";
 import { assignmentService } from "@/services/assignment.service";
@@ -161,7 +161,9 @@ function NotesPanel({
   }, [notes]);
 
   const sortedNotes = [...notes].sort((a, b) => {
-    return sortOrder === "newest" ? b.timestamp - a.timestamp : a.timestamp - b.timestamp;
+    return sortOrder === "newest"
+      ? b.timestamp - a.timestamp
+      : a.timestamp - b.timestamp;
   });
 
   const handleAddNote = () => {
@@ -206,7 +208,9 @@ function NotesPanel({
               <BookOpen size={18} className="text-yellow-400" />
             </div>
             <p className="text-xs text-zinc-500">No notes yet</p>
-            <p className="text-[10px] text-zinc-600">Add notes while watching</p>
+            <p className="text-[10px] text-zinc-600">
+              Add notes while watching
+            </p>
           </div>
         )}
 
@@ -216,8 +220,7 @@ function NotesPanel({
             onClick={() => onSeekToNote(note.timestamp)}
             className="w-full text-left group"
           >
-            <div className="rounded-lg border border-white/8 bg-white/3 p-3 hover:bg-yellow-500/8 hover:border-yellow-500/20 transition-all group cursor-pointer"
-              >
+            <div className="rounded-lg border border-white/8 bg-white/3 p-3 hover:bg-yellow-500/8 hover:border-yellow-500/20 transition-all group cursor-pointer">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-start gap-2 flex-1 min-w-0">
                   <div className="text-xs font-mono text-yellow-400 shrink-0 mt-0.5">
@@ -293,6 +296,7 @@ function ChatPanel({
   const [historyLoading, setHistoryLoading] = useState(false);
   const [webSearchEnabled, setWebSearchEnabled] = useState(false); //toggle internet search
   const [enhancePromptEnabled, setEnhancePromptEnabled] = useState(false);
+  const [language, setLanguage] = useState("en");
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -424,6 +428,7 @@ function ChatPanel({
         lesson_id: lessonId,
         web_search: webSearchEnabled,
         enhance_prompt: enhancePromptEnabled,
+        language: language,
       };
 
       const res = await fetch(
@@ -644,6 +649,32 @@ function ChatPanel({
                 className="flex-1 bg-transparent text-sm text-zinc-200 placeholder:text-zinc-600 resize-none outline-none max-h-24 scrollbar-thin py-0.5"
                 style={{ fieldSizing: "content" } as React.CSSProperties}
               />
+
+              {/* Language selector */}
+              <div className="relative">
+                <select
+                  value={language}
+                  onChange={(e) =>
+                    setLanguage(e.target.value as keyof typeof LANGUAGE_NAMES)
+                  }
+                  className="appearance-none w-auto bg-white/5 border border-white/10 rounded-xl px-2 pr-6 py-1 text-xs text-zinc-300 outline-none focus:border-violet-500/40 transition-colors cursor-pointer hover:bg-white/10 h-7"
+                >
+                  {Object.entries(LANGUAGE_NAMES).map(([code, name]) => (
+                    <option
+                      key={code}
+                      value={code}
+                      className="bg-zinc-800 text-zinc-200"
+                    >
+                      {name}
+                    </option>
+                  ))}
+                </select>
+                {/* custom dropdown arrow */}
+                <ChevronDown
+                  size={10}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none"
+                />
+              </div>
 
               {/* Web search toggle */}
               <div className="relative group">
@@ -1038,7 +1069,7 @@ export default function LearnPage() {
           parsed.map((n: any) => ({
             ...n,
             createdAt: new Date(n.createdAt),
-          }))
+          })),
         );
       } else {
         setNotes([]);
@@ -1053,7 +1084,7 @@ export default function LearnPage() {
     try {
       localStorage.setItem(
         `notes_lesson_${currentLesson.id}`,
-        JSON.stringify(notesToSave)
+        JSON.stringify(notesToSave),
       );
     } catch {
       toast.error("Failed to save notes");
@@ -1847,14 +1878,20 @@ export default function LearnPage() {
                   onSeekToNote={seekToNote}
                 />
               ) : (
-                <ChatPanel lessonId={currentLesson?.id ?? null} userId={user?.id ?? 0} />
+                <ChatPanel
+                  lessonId={currentLesson?.id ?? null}
+                  userId={user?.id ?? 0}
+                />
               )}
             </>
           ) : (
             /* Collapsed: vertical icon buttons */
             <div className="flex flex-col items-center pt-3 gap-1">
               <button
-                onClick={() => { setNotesTab(true); setChatOpen(true); }}
+                onClick={() => {
+                  setNotesTab(true);
+                  setChatOpen(true);
+                }}
                 className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${
                   notesTab
                     ? "bg-yellow-500/15 text-yellow-400 border border-yellow-500/30"
@@ -1865,7 +1902,10 @@ export default function LearnPage() {
                 <BookOpen size={15} />
               </button>
               <button
-                onClick={() => { setNotesTab(false); setChatOpen(true); }}
+                onClick={() => {
+                  setNotesTab(false);
+                  setChatOpen(true);
+                }}
                 className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${
                   !notesTab
                     ? "bg-violet-500/15 text-violet-400 border border-violet-500/30"

@@ -17,17 +17,18 @@ export const lessonService = {
     data: {
       title: string;
       description?: string;
+      language?: string;
       order?: number;
       external_video_link?: string;
       video?: File | null;
       pdf?: File | null;
-    }
+    },
   ) {
     const formData = new FormData();
     formData.append("title", data.title);
     if (data.description) formData.append("description", data.description);
-    if (data.order !== undefined)
-      formData.append("order", String(data.order));
+    if (data.order !== undefined) formData.append("order", String(data.order));
+    if (data.language) formData.append("language", data.language);
     if (data.external_video_link)
       formData.append("external_video_link", data.external_video_link);
     if (data.video) formData.append("video", data.video);
@@ -45,21 +46,22 @@ export const lessonService = {
       title?: string;
       description?: string;
       order?: number;
+      language?: string;
       external_video_link?: string;
       video?: File | null;
       pdf?: File | null;
-    }
+    },
   ) {
     const formData = new FormData();
     if (data.title) formData.append("title", data.title);
     if (data.description !== undefined)
       formData.append("description", data.description);
-    if (data.order !== undefined)
-      formData.append("order", String(data.order));
+    if (data.order !== undefined) formData.append("order", String(data.order));
     if (data.external_video_link !== undefined)
       formData.append("external_video_link", data.external_video_link);
     if (data.video) formData.append("video", data.video);
     if (data.pdf) formData.append("pdf", data.pdf);
+    if (data.language) formData.append("language", data.language);
 
     const res = await api.put(`/lessons/${lessonId}`, formData, {
       headers: { "Content-Type": "multipart/form-data" },

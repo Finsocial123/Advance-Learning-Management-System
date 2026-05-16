@@ -12,7 +12,7 @@ class Lesson(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
-    order = Column(Integer, default=0)
+    order = Column(Integer, default=1)
 
     video_url = Column(String(500), nullable=True)
     pdf_url = Column(String(500), nullable=True)
@@ -25,9 +25,11 @@ class Lesson(Base):
     video_public_id = Column(String(255), nullable=True)
     pdf_public_id = Column(String(255), nullable=True)
 
-    course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
+    course_id = Column(Integer, ForeignKey("courses.id", ondelete="CASCADE"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    language: Mapped[str] = mapped_column(String(10), default="en", nullable=False)
+    
     progress_records = relationship(
         "LessonProgress",
         backref="lesson",
