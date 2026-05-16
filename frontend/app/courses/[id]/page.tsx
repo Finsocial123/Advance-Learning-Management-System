@@ -157,6 +157,12 @@ export default function CourseDetailPage() {
                       Continue Learning
                     </Button>
                     <Button
+                      variant="secondary"
+                      onClick={() => router.push(`/courses/${courseId}/live`)}
+                    >
+                      Join Live Class
+                    </Button>
+                    <Button
                       variant="danger"
                       onClick={handleUnenroll}
                       loading={enrollLoading}
@@ -174,6 +180,12 @@ export default function CourseDetailPage() {
 
             {isOwner && (
               <>
+                <Button
+                  variant="secondary"
+                  onClick={() => router.push(`/teacher/courses/${courseId}/live`)}
+                >
+                  Go Live
+                </Button>
                 <Button
                   variant="secondary"
                   onClick={() =>

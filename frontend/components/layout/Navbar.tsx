@@ -18,6 +18,7 @@ import { useAuthStore } from "@/store/authStore";
 import Badge from "@/components/ui/Badge";
 import { cn, getInitials } from "@/lib/utils";
 import Sidebar from "./Sidebar";
+import NotificationBell from "./NotificationBell";
 
 export default function Navbar() {
   const { user, isAuthenticated } = useAuth();
@@ -128,9 +129,11 @@ export default function Navbar() {
           </div>
 
           <div className="hidden items-center gap-3 md:flex">
-            {isAuthenticated && user ? (
-              <div className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-950/45 py-1.5 pl-2 pr-2">
-                <Link href="/profile" className="group flex items-center gap-3">
+  {isAuthenticated && user ? (
+    <div className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-950/45 py-1.5 pl-2 pr-2">
+      <NotificationBell />
+
+      <Link href="/profile" className="group flex items-center gap-3">
                   {user.avatar_url ? (
                     <Image
                       src={user.avatar_url}
@@ -140,7 +143,7 @@ export default function Navbar() {
                       className="h-8.5 w-8.5 rounded-xl border border-slate-700 object-cover"
                     />
                   ) : (
-                    <div className="flex h-[34px] w-[34px] items-center justify-center rounded-xl border border-indigo-400/20 bg-indigo-500/10 text-xs font-bold text-indigo-200">
+                    <div className="flex h-8.5 w-8.5 items-center justify-center rounded-xl border border-indigo-400/20 bg-indigo-500/10 text-xs font-bold text-indigo-200">
                       {getInitials(user.name)}
                     </div>
                   )}

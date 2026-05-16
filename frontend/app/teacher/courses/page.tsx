@@ -107,6 +107,9 @@ export default function TeacherCoursesPage() {
                 <Button size="sm" variant="ghost" onClick={() => router.push(`/courses/${course.id}`)}>
                   <Eye size={14} />
                 </Button>
+                <Button size="sm" variant="secondary" onClick={() => router.push(`/teacher/courses/${course.id}/live`)}>
+                  Go Live
+                </Button>
                 <Button size="sm" variant="secondary" onClick={() => router.push(`/teacher/courses/${course.id}/students`)}>
                   <Users size={14} /> Students
                 </Button>
