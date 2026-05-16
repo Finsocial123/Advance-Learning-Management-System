@@ -19,6 +19,7 @@ export default function CreateLessonPage() {
     title: string;
     description: string;
     order: number;
+    language: string;
     external_video_link: string;
     video: File | null;
     pdf: File | null;
