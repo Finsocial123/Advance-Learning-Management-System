@@ -24,6 +24,7 @@ export interface Lesson {
   id: number;
   title: string;
   description: string | null;
+  language?: string;
   order: number;
   video_url: string | null;
   pdf_url: string | null;

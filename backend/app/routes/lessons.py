@@ -42,6 +42,7 @@ async def create_lesson(
     course_id: int,
     title: str = Form(...),
     description: Optional[str] = Form(None),
+    language: str = Form("en"),
     order: Optional[int] = Form(0),
     external_video_link: Optional[str] = Form(None),
     video: Optional[UploadFile] = File(None),
@@ -58,6 +59,7 @@ async def create_lesson(
     video_url = None
     video_public_id = None
     transcript = None
+    segments = []
 
     if video:
         video_bytes = await video.read()
@@ -76,7 +78,9 @@ async def create_lesson(
         video_public_id = upload_result["public_id"]
 
         try:
-            transcript = await transcribe_video(video_bytes)
+            result = await transcribe_video(video_bytes)
+            transcript = result["text"]
+            segments = result["segments"]
         except Exception as e:
             raise HTTPException(status_code=422, detail=f"Transcription failed: {str(e)}")
         if not transcript:
@@ -100,6 +104,7 @@ async def create_lesson(
     lesson = Lesson(
         title=title,
         description=description,
+        language=language,
         order=order,
         external_video_link=external_video_link,
         video_url=video_url,
@@ -114,42 +119,36 @@ async def create_lesson(
     await db.commit()
     await db.refresh(lesson)    
 
-    chunks_created = 0
+    transcript_chunks = 0
+    pdf_chunks = 0
+
     if transcript:
-        chunks_created = await chunk_and_embed_lesson(
+        transcriptS_chunks = await chunk_and_embed_lesson(
             lesson_id=lesson.id,
             text=transcript,
             source="transcript",
-            db=db
+            db=db,
+            segments=segments
         )
-        await db.commit()
-        return {
-            "lesson_id": lesson.id,
-            "video_url": video_url,
-            "transcript_preview": transcript[:200],
-            "chunks_created": chunks_created,
-            "message": "Video uploaded, transcribed and embedded successfully"
-        }
 
     if pdf_text:
-        chunks_created = await chunk_and_embed_lesson(
+        pdf_chunks = await chunk_and_embed_lesson(
             lesson_id=lesson.id,
             text=pdf_text,
             source="notes",
             db=db
+            # no segments for PDF
         )
-        await db.commit()
-        return {
-            "lesson_id": lesson.id,
-            "characters": len(pdf_text),
-            "chunks_created": chunks_created,
-            "preview": pdf_text[:200],
-            "message": "PDF processed and embedded successfully"
-        }
 
     return {
+        "lesson_id": lesson.id,
+        "video_url": video_url,
+        "pdf_url": pdf_url,
+        "transcript_preview": transcript[:200] if transcript else None,
+        "pdf_preview": pdf_text[:200] if pdf_text else None,
+        "transcript_chunks": transcript_chunks,
+        "pdf_chunks": pdf_chunks,
         "message": "Lesson created successfully",
-        "lesson_id": lesson.id
     }
 
 

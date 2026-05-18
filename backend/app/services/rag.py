@@ -1,7 +1,5 @@
 from app.core.config import EMBEDDING_MODEL
-
 import os
-
 from app.models.lesson import LessonChunk, Lesson
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,12 +7,20 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from app.client import client
 
+
+def format_timestamp(seconds: float | None) -> str | None:
+    if seconds is None:
+        return None
+    mins = int(seconds // 60)
+    secs = int(seconds % 60)
+    return f"{mins}:{secs:02d}"
+
 async def retrieve_context(
         query: str,
         db: AsyncSession,
         lesson_id: int | None = None,
         source: str | None = None,
-        top_k: int = 4
+        top_k: int = 6
 ) -> str:
 
     response = await client.embeddings.create(
@@ -42,10 +48,19 @@ async def retrieve_context(
     if not rows:
         return ""
     
-    context_parts = [
-        f"[Lesson {lesson_order}: {lesson_title} | {chunk.source} | chunk {chunk.chunk_index}]\n{chunk.content}"
-        for chunk, lesson_order, lesson_title in rows
-    ]
+    context_parts = []
+    
+    for chunk, lesson_order, lesson_title in rows:
+        
+        timestamp = ""
+        if chunk.source == "transcript" and chunk.start_time is not None:
+            start = format_timestamp(chunk.start_time)
+            end = format_timestamp(chunk.end_time)
+            timestamp = f" | {start} - {end}"
+
+        context_parts.append(
+            f"[Lesson {lesson_order}: {lesson_title} | {chunk.source}{timestamp}]\n{chunk.content}"
+        )
     return "\n\n---\n\n".join(context_parts)
 
 

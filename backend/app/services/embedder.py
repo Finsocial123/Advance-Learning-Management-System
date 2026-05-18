@@ -1,12 +1,16 @@
 from app.core.config import EMBEDDING_MODEL
 
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from sqlalchemy.orm import Session
-from sqlalchemy import delete
-import os
-
 from app.client import client
 from app.models.lesson import LessonChunk  
+
+import os
+import asyncio
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import delete, select
+from sqlalchemy.orm import Session
+
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from app.models.lesson import LessonChunk
 
 
 splitter = RecursiveCharacterTextSplitter(
@@ -16,9 +20,64 @@ splitter = RecursiveCharacterTextSplitter(
 )
 
 
-async def chunk_and_embed_lesson(lesson_id: int, text: str, source: str, db: Session) -> int:
+async def embed_texts(texts: list[str]) -> list[list[float]]:
+    """Embed a list of texts using OpenRouter embedding model"""
+    response = await client.embeddings.create(
+        model=EMBEDDING_MODEL,  
+        input=texts
+    )
+    return [item.embedding for item in response.data]
+
+
+
+def _group_segments_into_chunks(
+    segments: list[dict],
+    max_chars: int = 500    
+) -> list[dict]:
+    """Group whisper segments into chunks of -500 chars.
+        Preserves start/end timestamps for each chunk"""
+    chunks = []
+    current_text = ""
+    current_start = None
+    current_end = None
+
+    for seg in segments:
+        if current_start is None:
+            current_start = seg["start"]
+
+        if len(current_text) + len(seg["text"]) > max_chars and current_text:
+            chunks.append({
+                "text": current_text.strip(),
+                "start": current_start,
+                "end": current_end
+            })
+            current_text = seg["text"]
+            current_start = seg["start"]
+        else:
+            current_text += " " + seg["text"]
+
+        current_text = seg["end"]
+
+    if current_text:
+        chunks.append({
+            "text": current_text.strip(),
+            "start": current_start,
+            "end": current_end
+        })
+
+    return chunks
+
+
+
+async def chunk_and_embed_lesson(
+    lesson_id: int, 
+    text: str, 
+    source: str, 
+    db: AsyncSession,
+    segments: list[dict] | None = None
+    ) -> int:
     """
-    Chunk text, embed each chunk, store in DB.
+    Chunk text, embed, store in pgvector with timestamps if segments provided.
     Returns number of chunks created.
     """
 
@@ -28,27 +87,35 @@ async def chunk_and_embed_lesson(lesson_id: int, text: str, source: str, db: Ses
             LessonChunk.source == source
         )
     )
+    await db.commit()
 
-    chunks = splitter.split_text(text)
-    if not chunks:
+    if segments:
+        chunks_data = _group_segments_into_chunks(segments)
+    else:
+            # PDF / notes — no timestamps
+            raw_chunks = splitter.split_text(text)
+            chunks_data = [
+                {"text": c, "start": None, "end": None}
+                for c in raw_chunks
+            ]
+
+    if not chunks_data:
         return 0
 
-    response = await client.embeddings.create(
-        model=EMBEDDING_MODEL,
-        input=chunks
-    )
-
-    embeddings = [item.embedding for item in response.data]
+    texts = [c["text"] for c in chunks_data]
+    embeddings = await embed_texts(texts)
 
     db_chunks = [
-        LessonChunk(                             
+        LessonChunk(
             lesson_id=lesson_id,
-            content=chunk_text,
+            content=c["text"],
             source=source,
-            chunk_index=idx,
-            embedding=embedding
+            chunk_index=i,
+            embedding=embedding,
+            start_time=c["start"],   # None for PDF
+            end_time=c["end"]        # None for PDF
         )
-        for idx, (chunk_text, embedding) in enumerate(zip(chunks, embeddings))
+        for i, (c, embedding) in enumerate(zip(chunks_data, embeddings))
     ]
 
     db.add_all(db_chunks)

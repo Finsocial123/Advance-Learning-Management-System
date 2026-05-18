@@ -7,11 +7,11 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.core.config import MODEL
-
+from app.instructions import get_system_prompt
 from app.core.database import get_async_db, get_db, get_session_factory
 from app.client import client
 from app.services.rag import retrieve_context
-from app.instructions import SYSTEM_PROMPT, RAG_PROMPT_TEMPLATE
+from app.instructions import RAG_PROMPT_TEMPLATE
 from app.services.context_manager import trim_history
 from app.services.tools.definitions import TOOLS
 from app.services.tools.executor import execute_tool
@@ -190,14 +190,17 @@ async def send_message_stream(
         else:
             raw_history.append({"role": msg.role.value, "content": msg.content})
 
+    system_prompt = get_system_prompt(request.language)
+    
+  
     trimmed_history = trim_history(
         history=raw_history,
-        system_prompt=SYSTEM_PROMPT,
+        system_prompt=system_prompt,
         rag_context=context,
         max_tokens=50000
     )
 
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}] + trimmed_history
+    messages = [{"role": "system", "content": system_prompt}] + trimmed_history
 
     print("MESSAGES:", json.dumps(messages, indent=2))
 

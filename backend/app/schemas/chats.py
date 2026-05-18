@@ -11,6 +11,7 @@ class ChatRequest(ChatBase):
     lesson_id: int | None = None
     web_search: bool = False
     enhance_prompt: bool = False
+    language: str = "en"
     pass
 
 class ChatResponse(ChatBase):
