@@ -16,7 +16,7 @@ class LiveSession(Base):
     # scheduled | live | ended
     status = Column(String(20), default="scheduled", nullable=False)
 
-    course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
+    course_id = Column(Integer, ForeignKey("courses.id"), onDelete= "CASCADE", nullable=False)
     teacher_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
     started_at = Column(DateTime(timezone=True), nullable=True)
