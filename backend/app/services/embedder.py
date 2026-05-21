@@ -34,8 +34,6 @@ def _group_segments_into_chunks(
     segments: list[dict],
     max_chars: int = 500    
 ) -> list[dict]:
-    """Group whisper segments into chunks of -500 chars.
-        Preserves start/end timestamps for each chunk"""
     chunks = []
     current_text = ""
     current_start = None
@@ -76,11 +74,6 @@ async def chunk_and_embed_lesson(
     db: AsyncSession,
     segments: list[dict] | None = None
     ) -> int:
-    """
-    Chunk text, embed, store in pgvector with timestamps if segments provided.
-    Returns number of chunks created.
-    """
-
     await db.execute(                                 
         delete(LessonChunk).where(                   
             LessonChunk.lesson_id == lesson_id,
@@ -116,6 +109,46 @@ async def chunk_and_embed_lesson(
             end_time=c["end"]        # None for PDF
         )
         for i, (c, embedding) in enumerate(zip(chunks_data, embeddings))
+    ]
+
+    db.add_all(db_chunks)
+    await db.commit()
+
+    return len(db_chunks)
+
+
+async def embed_visual_frames(
+    lesson_id: int,
+    frames: list[dict],
+    db: AsyncSession
+) -> int:
+    # Delete existing visual chunks for this lesson
+    await db.execute(
+        delete(LessonChunk).where(
+            LessonChunk.lesson_id == lesson_id,
+            LessonChunk.source == "visual"
+        )
+    )
+    await db.commit()
+
+    if not frames:
+        return 0
+
+    # Embed all frame descriptions
+    descriptions = [frame["description"] for frame in frames]
+    embeddings = await embed_texts(descriptions)
+
+    db_chunks = [
+        LessonChunk(
+            lesson_id=lesson_id,
+            content=frame["description"],
+            source="visual",
+            chunk_index=i,
+            embedding=embedding,
+            start_time=frame["start"],
+            end_time=frame["end"]
+        )
+        for i, (frame, embedding) in enumerate(zip(frames, embeddings))
     ]
 
     db.add_all(db_chunks)
