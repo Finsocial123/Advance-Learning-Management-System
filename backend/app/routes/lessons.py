@@ -17,6 +17,8 @@ from app.utils.cloudinary import upload_file, delete_file
 from app.services.embedder import chunk_and_embed_lesson
 from app.services.extractor import extract_text_from_pdf
 from app.services.transcriber import transcribe_video
+from app.services.frame_analyzer import analyze_video_frames
+from app.services.embedder import embed_visual_frames
 from app.services.tools.summarizer import summarize_lesson
 
 from io import BytesIO
@@ -121,15 +123,36 @@ async def create_lesson(
 
     transcript_chunks = 0
     pdf_chunks = 0
+    visual_chunks = 0
 
     if transcript:
-        transcriptS_chunks = await chunk_and_embed_lesson(
+        transcript_chunks = await chunk_and_embed_lesson(
             lesson_id=lesson.id,
             text=transcript,
             source="transcript",
             db=db,
             segments=segments
         )
+
+    # Process visual frames from video
+    if video_bytes:
+        try:
+            print(f"Analyzing visual content from video for lesson {lesson.id}...")
+            frames = await analyze_video_frames(
+                video_bytes=video_bytes,
+                interval_seconds=15,  # Extract frame every 15 seconds
+                max_frames=30  # Max 30 frames per video
+            )
+            if frames:
+                visual_chunks = await embed_visual_frames(
+                    lesson_id=lesson.id,
+                    frames=frames,
+                    db=db
+                )
+                print(f"Created {visual_chunks} visual chunks")
+        except Exception as e:
+            print(f"Visual analysis failed (non-critical): {e}")
+            # Don't fail the entire upload if visual analysis fails
 
     if pdf_text:
         pdf_chunks = await chunk_and_embed_lesson(
@@ -148,6 +171,7 @@ async def create_lesson(
         "pdf_preview": pdf_text[:200] if pdf_text else None,
         "transcript_chunks": transcript_chunks,
         "pdf_chunks": pdf_chunks,
+        "visual_chunks": visual_chunks,
         "message": "Lesson created successfully",
     }
 

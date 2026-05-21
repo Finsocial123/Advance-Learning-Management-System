@@ -49,14 +49,18 @@ async def retrieve_context(
         return ""
     
     context_parts = []
-    
+
     for chunk, lesson_order, lesson_title in rows:
-        
+
         timestamp = ""
-        if chunk.source == "transcript" and chunk.start_time is not None:
+        if chunk.start_time is not None:
             start = format_timestamp(chunk.start_time)
             end = format_timestamp(chunk.end_time)
-            timestamp = f" | {start} - {end}"
+
+            if chunk.source == "transcript":
+                timestamp = f" | ⏱ {start} - {end}"
+            elif chunk.source == "visual":
+                timestamp = f" | 🎬 {start} - {end}"
 
         context_parts.append(
             f"[Lesson {lesson_order}: {lesson_title} | {chunk.source}{timestamp}]\n{chunk.content}"
